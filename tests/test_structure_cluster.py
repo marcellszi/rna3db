@@ -1,6 +1,7 @@
 from rna3db.cluster import InfernalGraph
 import unittest
 
+
 class TestInfernalGraph(unittest.TestCase):
     def setUp(self):
         self.graph = InfernalGraph()
@@ -32,17 +33,18 @@ class TestInfernalGraph(unittest.TestCase):
         self.graph.add_chain("D")
         self.graph.add_chain("E")
 
-        self.graph.add_edge('RF_A', 'A')
-        self.graph.add_edge('RF_A', 'B')
+        self.graph.add_edge("RF_A", "A")
+        self.graph.add_edge("RF_A", "B")
 
-        self.graph.add_edge('RF_B', 'C')
-        self.graph.add_edge('RF_B', 'D')
+        self.graph.add_edge("RF_B", "C")
+        self.graph.add_edge("RF_B", "D")
 
         components = self.graph.components()
         self.assertEqual(len(components), 3)
         self.assertIn(set(["A", "B"]), components)
         self.assertIn(set(["C", "D"]), components)
         self.assertIn(set(["E"]), components)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,12 +12,12 @@ import argparse
 
 
 def parse(
-        input_dir: PathLike, 
-        output_path: PathLike, 
-        extension: str = "cif", 
-        cpu: int = None,
-        nmr_resolution: float = None
-    ):
+    input_dir: PathLike,
+    output_path: PathLike,
+    extension: str = "cif",
+    cpu: int = None,
+    nmr_resolution: float = None,
+):
     files = list(Path(input_dir).glob(f"*.{extension}"))
     data = {}
 
