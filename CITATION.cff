@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "RNA3DB: A dataset for training and benchmarking deep learning models for RNA structure prediction"
+authors:
+  - given-names: "Marcell"
+    family-names: "Szikszai"
+  - given-names: "Marcin"
+    family-names: Magnus
+  - given-names: "Siddhant"
+    family-names: "Sanghi"
+  - given-names: "Sachin"
+    family-names: "Kadyan"
+  - given-names: "Nazim"
+    family-names: "Bouatta"
+  - given-names: "Elena
+    family-names: Rivas"
+url: "https://github.com/marcellszi/rna3db"
