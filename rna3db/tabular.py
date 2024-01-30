@@ -75,7 +75,6 @@ class TabularOutput:
             "query_name",
             "score",
             "e_value",
-            "description_of_target",
         ]
         max_rows = 15
         s = ""
