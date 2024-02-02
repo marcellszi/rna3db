@@ -110,11 +110,11 @@ def main(args):
                 args.output,
                 args.mmseqs_binary_path,
                 args.min_seq_id,
-                args.min_coverage,
-                args.coverage_mode,
-                args.sensitivity,
-                args.alignment_mode,
-                args.max_seqs,
+                args.min_seq_coverage,
+                args.mmseqs_coverage_mode,
+                args.mmseqs_sensitivity,
+                args.mmseqs_alignment_mode,
+                args.mmseqs_max_seqs,
             )
             args.input = args.output
         if not args.only_sequence:
@@ -210,6 +210,9 @@ if __name__ == "__main__":
     )
     cluster_parser.add_argument(
         "--mmseqs_alignment_mode", type=int, default=3, help="MMseqs Alignment Mode"
+    )
+    cluster_parser.add_argument(
+        "--mmseqs_max_seqs", type=int, default=3, help="MMseqs max seqs"
     )
     cluster_parser.add_argument(
         "--structural_e_value_cutoff",
