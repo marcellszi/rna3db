@@ -1,10 +1,11 @@
-from typing import Sequence
+from typing import Sequence, Mapping, Tuple
 from collections import defaultdict
 from pathlib import Path
 from Bio import PDB
 
 from rna3db.utils import PathLike
 
+import dataclasses
 import json
 
 
@@ -86,10 +87,12 @@ class Residue:
         three_letter_code: str,
         one_letter_code: str,
         index: int,
+        atoms: Mapping[str, Tuple[float, float, float]],
     ):
         self.three_letter_code = three_letter_code
         self.one_letter_code = one_letter_code
         self.index = index
+        self.atoms = atoms
 
     @property
     def code(self) -> str:
@@ -351,9 +354,44 @@ class mmCIFParser(FileParser):
 
         return max(resolutions)
 
+
     @property
     def structure_method(self):
         return ",".join(self.parsed_info["_exptl.method"]).lower()
+
+
+    @dataclasses.dataclass
+    class _AtomSite:
+        atom_id: str
+        three_letter_code: str
+        author_chain_id: str
+        author_seq_num: int
+        mmcif_seq_num: int
+        insertion_code: str
+        hetatm_atom: str
+        x: float
+        y: float
+        z: float
+
+
+    @staticmethod
+    def _get_atom_sites(parsed_info: PDB.MMCIF2Dict):
+        return [
+            mmCIFParser._AtomSite(*site)
+            for site in zip(
+                parsed_info["_atom_site.label_atom_id"],  # atom name
+                parsed_info["_atom_site.label_comp_id"],  # residue name
+                parsed_info["_atom_site.auth_asym_id"],  # author chain
+                parsed_info["_atom_site.auth_seq_id"],  # author_seq_num
+                parsed_info["_atom_site.label_seq_id"],  # mmcif_seq_num
+                parsed_info["_atom_site.pdbx_PDB_ins_code"],  # insertion code?
+                parsed_info["_atom_site.group_PDB"],  # hetatm_atom
+                parsed_info["_atom_site.Cartn_x"],  # x
+                parsed_info["_atom_site.Cartn_y"],  # y
+                parsed_info["_atom_site.Cartn_z"],  # z
+            )
+        ]
+
 
     @property
     def chains(self):
@@ -398,12 +436,12 @@ class mmCIFParser(FileParser):
             self.parsed_info["_entity_poly_seq.num"],
         ):
             for author_id in id_map[entity_id]:
-                # chains_full[id_map[entity_id]].append(
                 chains_full[author_id].append(
                     Residue(
                         three_letter_code=mon_id,
                         one_letter_code=self.letters_3to1(mon_id),
                         index=int(idx),
+                        atoms={} # placeholder until we get coordinates
                     )
                 )
 
@@ -420,6 +458,41 @@ class mmCIFParser(FileParser):
                     author_id=author_chain_id,
                     residues=chain_sequence,
                 )
+
+
+        # find starting index of relevant chains
+        seq_start_num = {
+            author_chain_id: min([res.index for res in chain])
+            for author_chain_id, chain in chains.items()
+        }
+
+        # iterate through atom sites to get coordinates
+        for site in mmCIFParser._get_atom_sites(self.parsed_info):
+            # if not a relevant chain, don't care about atoms
+            if site.author_chain_id not in chains:
+                continue
+
+            # TODO: verify this is fine
+            # I think these are just for H_* and W?
+            if site.mmcif_seq_num == ".":
+                continue
+
+            # the idx is just the mmcif_seq_num - seq_start_num
+            seq_idx = int(site.mmcif_seq_num) - seq_start_num[site.author_chain_id]
+
+            # make sure that the sites actually match, should never be a mismatch
+            assert (
+                site.three_letter_code
+                == chains[site.author_chain_id][seq_idx].three_letter_code
+            )
+            assert seq_idx == chains[site.author_chain_id][seq_idx].index - 1
+
+            chains[site.author_chain_id][seq_idx].author_index = int(site.author_seq_num)
+
+            # add atom coordinates
+            chains[site.author_chain_id][seq_idx].atoms[site.atom_id] = tuple(
+                map(float, (site.x, site.y, site.z))
+            )
 
         return chains
 
