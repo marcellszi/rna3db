@@ -1,4 +1,5 @@
 from multiprocessing import Pool
+from functools import partial
 from pathlib import Path
 from tqdm import tqdm
 
@@ -21,7 +22,7 @@ def parse(
     files = list(Path(input_dir).glob(f"*.{extension}"))
     data = {}
 
-    f = lambda p: parse_as_dict(p, nmr_resolution)
+    f = partial(parse_as_dict, nmr_resolution=nmr_resolution)
     with Pool(processes=cpu) as p:
         with tqdm(total=len(files)) as pbar:
             for d in p.imap_unordered(f, files):
