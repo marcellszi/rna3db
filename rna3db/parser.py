@@ -12,7 +12,7 @@ def parse_as_dict(
     path: PathLike,
     modifications_cache_path: PathLike = None,
     molecule_type: str = "RNA",
-    nmr_resolution=None
+    nmr_resolution=None,
 ):
     """Top-level API that parses an mmCIF/PDBx file as a Python dict.
 
@@ -32,10 +32,7 @@ def parse_as_dict(
     # we want to make sure this never fails and interrupts the parse
     try:
         structure_file = StructureFile(
-            path, 
-            modification_handler, 
-            molecule_type,
-            nmr_resolution
+            path, modification_handler, molecule_type, nmr_resolution
         )
         for chain in structure_file:
             chain_id = f"{structure_file.pdb_id}_{chain.author_id}"
@@ -44,7 +41,7 @@ def parse_as_dict(
                 "structure_method": structure_file.structure_method,
                 "resolution": structure_file.resolution,
                 "length": len(chain),
-                "sequence": chain.sequence
+                "sequence": chain.sequence,
             }
     except:
         # we just print an error if something went wrong, don't exit
@@ -60,7 +57,7 @@ def parse_file(
     path: PathLike,
     modifications_cache_path: PathLike = None,
     molecule_type: str = "RNA",
-    nmr_resolution=None
+    nmr_resolution=None,
 ):
     """Top-level API that parses an mmCIF/PDBx file as a StructureFile.
 
@@ -244,7 +241,7 @@ class StructureFile:
         path: PathLike,
         modification_handler: ModificationHandler,
         molecule_type: str = "RNA",
-        nmr_resolution: float = 0.0
+        nmr_resolution: float = 0.0,
     ):
         """A StructureFile encapsulates a parsed mmCIF or PDB file and contains convenient high-level APIs for common
         tasks.
