@@ -3,6 +3,7 @@ __pycache__
 *.egg-info
 build
 dist
+data/
 
 # vim swp
 [._]*.s[a-v][a-z]
