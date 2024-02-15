@@ -29,6 +29,10 @@ def split(
     train_set_length = 0
     i = 1 if force_zero_test else 0
     while train_set_length / total_repr_clusters < train_size:
+        # skip if it's not a real component (should only happen with 0)
+        if f"component_{i}" not in cluster_json:
+            i += 1
+            continue
         train_components.add(f"component_{i}")
         train_set_length += len(cluster_json[f"component_{i}"].keys())
         i += 1
