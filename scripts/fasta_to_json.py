@@ -15,4 +15,3 @@ if __name__ == "__main__":
     descriptions, sequences = parse_fasta(args.input_path)
     data = {k: {"sequence": v} for (k, v) in zip(descriptions, sequences)}
     write_json(data, args.output_path)
-
