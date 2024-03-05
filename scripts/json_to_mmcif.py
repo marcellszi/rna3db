@@ -273,11 +273,11 @@ _atom_site.pdbx_PDB_model_num
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Converts a JSON produced by RNA3DB's parse command to a FASTA file."
+        description="Converts a JSON produced by RNA3DB's parse command to a set of PDBx/mmCIF files."
     )
     parser.add_argument("input_json_file", type=Path)
     parser.add_argument("output_folder", type=Path)
-    parser.add_argument("--verbose", type=bool, default=False)
+
     args = parser.parse_args()
 
     print('loading json file ...', args.input_json_file)
