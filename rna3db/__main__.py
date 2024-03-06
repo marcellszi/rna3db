@@ -18,11 +18,14 @@ def parse(
     extension: str = "cif",
     cpu: int = None,
     nmr_resolution: float = None,
+    include_atoms: bool = False,
 ):
     files = list(Path(input_dir).glob(f"*.{extension}"))
     data = {}
 
-    f = partial(parse_as_dict, nmr_resolution=nmr_resolution)
+    f = partial(
+        parse_as_dict, nmr_resolution=nmr_resolution, include_atoms=include_atoms
+    )
     with Pool(processes=cpu) as p:
         with tqdm(total=len(files)) as pbar:
             for d in p.imap_unordered(f, files):
@@ -94,7 +97,13 @@ def cluster_structure(
 
 def main(args):
     if args.command == "parse":
-        parse(args.input, args.output, cpu=args.cpu)
+        parse(
+            args.input,
+            args.output,
+            cpu=args.cpu,
+            nmr_resolution=args.nmr_resolution,
+            include_atoms=args.include_atoms,
+        )
     elif args.command == "filter":
         filter(
             args.input,
@@ -149,6 +158,11 @@ if __name__ == "__main__":
         "--nmr_resolution",
         type=float,
         help="Resolution to use for NMR structures. By default we use float('inf').",
+    )
+    parse_parser.add_argument(
+        "--include_atoms",
+        action="store_true",
+        help="Whether to include the XYZ atom coordinates in the parsed output.",
     )
 
     # subparser for the "filter" command
