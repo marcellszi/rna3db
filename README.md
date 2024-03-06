@@ -24,4 +24,4 @@ We provide the following files:
     - Most convenient for getting started with training and testing using RNA3DB
 
 ## Generating the dataset from scratch
-If you wish to build your own dataset from scratch, please follow see [Building RNA3DB from scratch](https://github.com/marcellszi/rna3db/wiki/Building-RNA3BB-from-scratch).
+If you wish to build your own dataset from scratch, please follow see [Building RNA3DB from scratch](https://github.com/marcellszi/rna3db/wiki/Building-RNA3DB-from-scratch).
