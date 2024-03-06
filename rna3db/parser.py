@@ -430,7 +430,9 @@ class mmCIFParser:
                 parsed_info["_atom_site.label_seq_id"],  # mmcif_seq_num
                 parsed_info["_atom_site.pdbx_PDB_ins_code"],  # insertion code?
                 parsed_info["_atom_site.group_PDB"],  # hetatm_atom
-                parsed_info["_atom_site.label_alt_id"],  # alternative conformation identifier
+                parsed_info[
+                    "_atom_site.label_alt_id"
+                ],  # alternative conformation identifier
                 parsed_info["_atom_site.Cartn_x"],  # x
                 parsed_info["_atom_site.Cartn_y"],  # y
                 parsed_info["_atom_site.Cartn_z"],  # z

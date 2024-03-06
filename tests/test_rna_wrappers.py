@@ -27,7 +27,7 @@ class TestRNAWrappers(unittest.TestCase):
         chain.add_residue(Residue("C", "C", 4))
         self.assertEqual(len(chain), 5)
         self.assertEqual(chain.sequence, "ANNNC")
- 
+
 
 if __name__ == "__main__":
     unittest.main()
