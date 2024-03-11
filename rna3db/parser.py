@@ -71,7 +71,7 @@ def parse_file(
         path (PathLike): path to mmCIF file to parse
         modifications_cache_path (PathLike, optinal): path to
             modifications_cache, default is None
-        molecule_type (str, default="RNA"): One of "RNA" or "peptide".
+        molecule_type (str, default="RNA"): One of "RNA" or "protein".
             Specifies whether RNA or protein chains should be extracted from
             the file. NOTE: support for proteins is currently experimental.
 
@@ -235,7 +235,7 @@ class ModificationHandler:
         """
         return three_letter_code in self.modifications["rna"]
 
-    def is_peptide(self, three_letter_code: str) -> bool:
+    def is_protein(self, three_letter_code: str) -> bool:
         """Check if `three_letter_code` is an amino acid.
 
         Args:
@@ -245,9 +245,9 @@ class ModificationHandler:
             bool: True if `three_letter_code` is an amino acid.
 
         """
-        return three_letter_code in self.modifications["peptide"]
+        return three_letter_code in self.modifications["protein"]
 
-    def peptide_letters_3to1(self, three_letter_code: str) -> str:
+    def protein_letters_3to1(self, three_letter_code: str) -> str:
         """Convert amino acid `three_letter_code` to `one_letter_code`.
 
         Args:
@@ -257,7 +257,7 @@ class ModificationHandler:
            str: one_letter_code of an amino acid, "X" if cannot be found.
 
         """
-        return self.modifications["peptide"].get(three_letter_code, "X")
+        return self.modifications["protein"].get(three_letter_code, "X")
 
     def rna_letters_3to1(self, three_letter_code: str) -> str:
         """Convert RNA nucleic acid `three_letter_code` to `one_letter_code`.
@@ -289,7 +289,7 @@ class StructureFile:
         Args:
             path (:PathLike:): The path to the file.
             modification_handler (:ModificationHandler:):
-            molecule_type (str, default="RNA"): One of "RNA" or "peptide". Specifies whether RNA or protein chains
+            molecule_type (str, default="RNA"): One of "RNA" or "protein". Specifies whether RNA or protein chains
                 should be extracted from the file.
 
         Attributes:
@@ -358,10 +358,10 @@ class mmCIFParser:
 
         if molecule_type == "RNA":
             self.letters_3to1 = lambda x: modification_handler.rna_letters_3to1(x)
-        elif molecule_type == "peptide":
-            self.letters_3to1 = lambda x: modification_handler.peptide_letters_3to1(x)
+        elif molecule_type == "protein":
+            self.letters_3to1 = lambda x: modification_handler.protein_letters_3to1(x)
         else:
-            raise ValueError('molecule_type must be one of "RNA" or "peptide".')
+            raise ValueError('molecule_type must be one of "RNA" or "protein".')
 
         self.parsed_info = PDB.MMCIF2Dict.MMCIF2Dict(self.path)
 

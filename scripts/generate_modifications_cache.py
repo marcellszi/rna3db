@@ -8,6 +8,8 @@ sys.path.append(".")  # an innocent hack to get this to run from the top level
 
 from Bio.Data import SCOPData
 
+VALID_RNA_CODES = set('ACGUT')
+
 # a few values are adjusted manually to make sure we are as correct as possible
 # and to avoid inconsistency with AlphaFold
 manual_fixes = {
@@ -104,10 +106,9 @@ def main(args):
 
     for k, v in modifications.items():
         if comp_types[k] == "protein":
-            if v != "X":
                 data["protein"][k] = v
         if comp_types[k] == "rna":
-            if v != "N":
+            if v in VALID_RNA_CODES:
                 data["rna"][k] = v
 
     with open(args.output_path, "w") as fp:
