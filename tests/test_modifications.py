@@ -8,7 +8,9 @@ from Bio.Data import SCOPData
 
 
 class TestModifications(unittest.TestCase):
-    modification_handler = ModificationHandler("tests/test_data/modifications_cache.json")
+    modification_handler = ModificationHandler(
+        "tests/test_data/modifications_cache.json"
+    )
 
     # accept both A and U for selenocysteines
     # note that selenocysteines that are incorrectly encoded in SCOPData
@@ -64,4 +66,3 @@ class TestModifications(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
