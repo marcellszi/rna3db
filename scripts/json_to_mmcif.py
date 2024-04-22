@@ -6,16 +6,6 @@ from pathlib import Path
 import argparse
 import os
 
-ATOMS = {
-    "G": "P OP1 OP2 O5' C5' C4' O4' C3' O3' C2' O2' C1' N9 C8 N7 C5 C6 O6 N1 C2 N2 N3 C4".split(),  # 23
-    "A": "P OP1 OP2 O5' C5' C4' O4' C3' O3' C2' O2' C1' N9 C8 N7 C5 C6 N6 N1 C2 N3 C4".split(),  # 22
-    "U": "P OP1 OP2 O5' C5' C4' O4' C3' O3' C2' O2' C1' N1 C2 O2 N3 C4 O4 C5 C6".split(),  # 20
-    "C": "P OP1 OP2 O5' C5' C4' O4' C3' O3' C2' O2' C1' N1 C2 O2 N3 C4 N4 C5 C6".split(),  # 20
-    "N": "P OP1 OP2 O5' C5' C4' O4' C3' O3' C2' O2' C1'".split(),
-    "T": "P OP1 OP2 O5' C5' C4' O4' C3' O3' C2'     C1' N1 C2 O2 N3 C4 N4 C5 C6 C7".split(),  # 20
-}
-
-
 def format_line(
     atom_index, atom_name, residue_name, chain_id, residue_index, x, y, z, verbose=False
 ):
@@ -89,7 +79,7 @@ def format_line(
     return formatted_mmcif_line + "\n"
 
 
-def run(data, output_path):
+def run(data, output_path, verbose = False):
     log = ""
     for dataset, value in data.items():
         dataset_pdb_index = 1
@@ -181,7 +171,7 @@ _atom_site.auth_atom_id
 _atom_site.pdbx_PDB_model_num 
 """
 
-                    print(f"# {dataset_pdb_index} >{pdb_id}_{chain_id}")
+                    if verbose: print(f"# {dataset_pdb_index} >{pdb_id}_{chain_id}")
                     log += f'# {dataset_pdb_index} >{pdb_id}_{chain_id} \n{value["sequence"]} {len(value["sequence"])}\n'
                     dataset_pdb_index += 1
 
@@ -192,63 +182,7 @@ _atom_site.pdbx_PDB_model_num
 
                     for residue in value["atoms"]:
                         residue_index += 1  # at the beginning of the cycle, so this will not mess up continues/break
-
-                        # collect poly seq per earch residue
-                        cif_txt_poly_seq += (
-                            f"1 {residue_index} {seq[residue_index - 1]} n\n"  # 1 1 G n
-                        )
-
-                        residue_name = ""
-                        # get the residue_names
                         for atom_name, xyz in residue.items():
-                            if "O6" in residue:
-                                residue_name = "G"
-                                break
-                            elif "N6" in residue:
-                                residue_name = "A"
-                                break
-                            elif "N4" in residue:
-                                residue_name = "C"
-                                break
-                            elif ("O4" in residue) or ("S4" in residue):
-                                residue_name = "U"
-                                break
-                            elif "C2'":  # at least there is a sugar
-                                residue_name = "N"  # for gap!
-
-                        # check the index!
-                        # if this is logged then you dont get missing atoms because residue_name is N and I fetch for backbone atoms
-                        # according the the dictionary at the top
-                        if residue_name != seq[residue_index - 1]:
-                            log += f"Seq inconsistence {pdb_id}_{chain_id} resi {residue_index} inferResName: {residue_name} != seqres: {seq[residue_index - 1]} ats:{residue}\n"
-                        residue_name = seq[residue_index - 1]
-                        if False:
-                            # fetch atoms for given residue!
-                            for atom_name in ATOMS[residue_name]:
-                                if atom_name not in residue:
-                                    log += f"Missing atoms   {pdb_id}_{chain_id} resi {residue_index} {residue_name} {atom_name}\n"
-                                    continue
-                                xyz = " ".join([str(f) for f in residue[atom_name]])
-                                x, y, z = residue[atom_name]
-
-                                cif_txt_atom_site += format_line(
-                                    atom_index,
-                                    atom_name,
-                                    seq[
-                                        residue_index - 1
-                                    ],  # residue_name, # which name to use it? seq[residue_index - 1]
-                                    chain_id,
-                                    residue_index,
-                                    verbose=False,
-                                )
-                                atom_index += 1
-                        else:  # get atoms in json files, all of them
-                            for atom_name in ATOMS[residue_name]:
-                                if atom_name not in residue:
-                                    log += f"Missing atoms   {pdb_id}_{chain_id} resi {residue_index} {residue_name} {atom_name}\n"
-                                    continue
-
-                            for atom_name, xyz in residue.items():
                                 # xyz = ' '.join([str(f) for f in residue[atom_name]])
                                 x, y, z = xyz
 
@@ -275,7 +209,7 @@ _atom_site.pdbx_PDB_model_num
                         + f"/{dataset}/{component}/{cluster}/{pdb_id}_{chain_id}.cif"
                     )
                     with open(fn, "w") as f:
-                        print(f"save {fn}")
+                        if verbose: print(f"save {fn}")
                         f.write(cif_txt)
                         f.write(cif_txt_poly_seq.strip())
                         f.write(cif_txt_atom_site)
