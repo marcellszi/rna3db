@@ -496,7 +496,7 @@ class mmCIFParser:
         # Get chain/polymer types
         chain_type = {}
         for entity_id, poly_type in zip(
-            self.parsed_info["_entity_poly_seq.entity_id"],
+            self.parsed_info["_entity_poly.entity_id"],
             self.parsed_info["_entity_poly.type"],
         ):
             for author_id in id_map[entity_id]:
