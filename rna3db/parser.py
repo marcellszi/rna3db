@@ -357,8 +357,10 @@ class mmCIFParser:
         self.include_atoms = include_atoms
 
         if molecule_type == "RNA":
+            self.letters_3to1 = lambda x: modification_handler.rna_letters_3to1(x)
             self.polymer_type = "polyribonucleotide"
         elif molecule_type == "protein":
+            self.letters_3to1 = lambda x: modification_handler.protein_letters_3to1(x)
             self.polymer_type = "polypeptide"
         else:
             raise ValueError('molecule_type must be one of "RNA" or "protein".')
