@@ -357,9 +357,9 @@ class mmCIFParser:
         self.include_atoms = include_atoms
 
         if molecule_type == "RNA":
-            self.letters_3to1 = lambda x: modification_handler.rna_letters_3to1(x)
+            self.polymer_type = "polyribonucleotide"
         elif molecule_type == "protein":
-            self.letters_3to1 = lambda x: modification_handler.protein_letters_3to1(x)
+            self.polymer_type = "polypeptide"
         else:
             raise ValueError('molecule_type must be one of "RNA" or "protein".')
 
@@ -491,15 +491,19 @@ class mmCIFParser:
                     )
                 )
 
-        # keep only chains that contain at least one 'self.molecule_type'
+        # Get chain/polymer types
+        chain_type = {}
+        for entity_id, poly_type in zip(
+            self.parsed_info["_entity_poly_seq.entity_id"],
+            self.parsed_info["_entity_poly.type"],
+        ):
+            for author_id in id_map[entity_id]:
+                chain_type[author_id] = poly_type
+
+        # keep only chains of the appropriate polymer type
         chains = {}
         for author_chain_id, chain_data in chains_full.items():
-            if any(
-                [
-                    self.molecule_type in chem_comp_type[i.three_letter_code]
-                    for i in chain_data.residues
-                ]
-            ):
+            if self.polymer_type in chain_type[author_chain_id]:
                 chains[author_chain_id] = chain_data
 
         # find starting index of relevant chains
