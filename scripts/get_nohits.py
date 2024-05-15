@@ -1,5 +1,5 @@
 from rna3db.tabular import read_tbls_from_dir
-from rna3db.utils import read_json
+from rna3db.parser import parse_fasta, write_fasta
 from pathlib import Path
 
 import argparse
@@ -13,11 +13,16 @@ if __name__ == "__main__":
     parser.add_argument("tbls_path", type=Path)
     args = parser.parse_args()
 
-    parse_json = read_json(args.input_path)
-    all_chains = set(parse_json.keys())
+    all_chains, all_sequences = parse_fasta(args.input_path)
+    all_dict = {k: v for k, v in zip(all_chains, all_sequences)}
+    all_chains = set(all_chains)
+
     tbl = read_tbls_from_dir(args.tbls_path)
     hit_chains = set(tbl.query_name)
 
-    with open(args.output_path, "w") as f:
-        for nohit in all_chains - hit_chains:
-            f.write(f'>{nohit}\n{parse_json[nohit]["sequence"]}\n')
+    nohits = all_chains - hit_chains
+
+    output_descriptions = list(nohits)
+    output_sequences = [all_dict[i] for i in nohits]
+
+    write_fasta(output_descriptions, output_sequences, args.output_path)
