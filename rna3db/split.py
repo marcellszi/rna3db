@@ -61,13 +61,9 @@ def split(
         output[split_names[-1]]["component_0"] = cluster_json["component_0"]
         lengths.pop("component_0")
 
-    # start with the smallest splits
-    # splits, split_names = zip(*sorted(zip(splits, split_names), reverse=True))
-
-    capacities = [int(total_repr_clusters * ratio) for ratio in splits]
+    capacities = [round(total_repr_clusters * ratio) for ratio in splits]
     for name, capacity in zip(split_names, capacities):
         components = find_optimal_components(lengths, capacity)
-        print(name, capacity, components)
         for k in sorted(components):
             lengths.pop(k)
             output[name][k] = cluster_json[k]
