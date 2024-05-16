@@ -132,7 +132,16 @@ def main(args):
                 args.input, args.output, args.tbl_dir, args.structural_e_value_cutoff
             )
     elif args.command == "split":
-        split(args.input, args.output, args.train_percentage, args.force_zero_test)
+        split(
+            args.input,
+            args.output,
+            splits=[
+                args.train_ratio,
+                args.valid_ratio,
+                1 - args.train_ratio - args.valid_ratio,
+            ],
+            force_zero_last=args.force_zero_test,
+        )
     else:
         raise ValueError
 
@@ -246,10 +255,16 @@ if __name__ == "__main__":
     split_parser.add_argument("input", type=Path, help="Input JSON file")
     split_parser.add_argument("output", type=Path, help="Output JSON file")
     split_parser.add_argument(
-        "--train_percentage",
+        "--train_ratio",
         type=float,
-        default=0.3,
-        help="Percentage of data for the train set",
+        default=0.7,
+        help="Ratio of data to use for the training set",
+    )
+    split_parser.add_argument(
+        "--valid_ratio",
+        type=float,
+        default=0.0,
+        help="Ratio of the data to use for the validation set",
     )
     split_parser.add_argument(
         "--force_zero_test",
