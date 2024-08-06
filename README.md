@@ -27,4 +27,4 @@ We provide the following files:
     - > **Note:** `rna3db-mmcifs.v2.tar.xz` was compressed using [LMZA](https://en.wikipedia.org/wiki/Lempel%E2%80%93Ziv%E2%80%93Markov_chain_algorithm). Most installations of [GNU tar](https://www.gnu.org/software/tar/) can usually uncompress these files without an issue. If not, you may need to install [XZ utils](https://xz.tukaani.org/xz-utils/).
 
 ## Generating the dataset from scratch
-If you wish to build your own dataset from scratch, please follow see [Building RNA3DB from scratch](https://github.com/marcellszi/rna3db/wiki/Building-RNA3DB-from-scratch).
+If you wish to build your own dataset from scratch, please see [Building RNA3DB from scratch](https://github.com/marcellszi/rna3db/wiki/Building-RNA3DB-from-scratch).
