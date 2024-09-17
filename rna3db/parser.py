@@ -422,7 +422,7 @@ class StructureFile:
                 "entity_id",
                 "details",
             ],
-            [("A", "N", "N", 1, "?")],
+            [(author_id, "N", "N", 1, "?")],
         )
         chem_comp_str = StructureFile._gen_mmcif_loop_str(
             "chem_comp",
