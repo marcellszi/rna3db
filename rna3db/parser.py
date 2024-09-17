@@ -414,7 +414,7 @@ class StructureFile:
             f"_entity_poly.pdbx_seq_one_letter_code_can {self[author_id].sequence}\n"
         )
         struct_asym_str = StructureFile._gen_mmcif_loop_str(
-            "_struct_asym",
+            "struct_asym",
             [
                 "id",
                 "pdbx_blank_PDB_chainid_flag",
@@ -425,7 +425,7 @@ class StructureFile:
             [("A", "N", "N", 1, "?")],
         )
         chem_comp_str = StructureFile._gen_mmcif_loop_str(
-            "_chem_comp",
+            "chem_comp",
             [
                 "id",
                 "type",
