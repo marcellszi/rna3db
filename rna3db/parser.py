@@ -94,11 +94,15 @@ class Residue:
         three_letter_code: str,
         one_letter_code: str,
         index: int,
+        atoms: dict = None,
     ):
         self.three_letter_code = three_letter_code
         self.one_letter_code = one_letter_code
         self.index = index
-        self.atoms = {}
+        # NOTE: we need to handle dict like this, cannot use `atoms: dict = {}` in method definition
+        # See important warning: https://docs.python.org/3/tutorial/controlflow.html#default-argument-values
+        # (the default value is evaluated only once, which causes issues with mutable dictionaries)
+        self.atoms = atoms if atoms else {}
 
     @property
     def code(self) -> str:
@@ -107,6 +111,15 @@ class Residue:
     @property
     def is_missing(self) -> bool:
         return not len(self.atoms) > 0
+
+    def __eq__(self, other) -> bool:
+        # NOTE: we don't care about three letter codes, only one letter
+        #       this means modifications are still equal
+        return (
+            self.one_letter_code == other.one_letter_code
+            and self.index == other.index
+            and self.atoms == other.atoms
+        )
 
     def __repr__(self):
         return (
@@ -134,6 +147,17 @@ class Chain:
 
     def __len__(self):
         return len(self.residues)
+
+    def __eq__(self, other):
+        # NOTE: we ignore the author_id for equality checks
+        if len(self) != len(other):
+            return False
+
+        for res_self, res_other in zip(self, other):
+            if res_self != res_other:
+                return False
+
+        return True
 
     @property
     def has_atoms(self):
@@ -314,9 +338,7 @@ class StructureFile:
             )
             file_parser = PDBParser
         else:
-            raise ValueError(
-                f"The extension {self.path.suffix.lower()} is not supported."
-            )
+            raise ValueError(f"The extension `{path.suffix.lower()}` is not supported.")
 
         # make the parser
         parser = file_parser(
@@ -475,6 +497,15 @@ class StructureFile:
                 ("N", "'RNA linking'", "y", '"N"', "?", "''", 0),
             ],
         )
+        entity_poly = StructureFile._gen_mmcif_loop_str(
+            "entity_poly",
+            [
+                "entity_id",
+                "type",
+            ],
+            [(1, "polyribonucleotide")],
+        )
+
         entity_poly_seq_str = StructureFile._gen_mmcif_loop_str(
             "entity_poly_seq",
             [
@@ -518,6 +549,7 @@ class StructureFile:
             f.write(header_str)
             f.write(struct_asym_str)
             f.write(chem_comp_str)
+            f.write(entity_poly)
             f.write(entity_poly_seq_str)
             f.write(atom_site_str)
 
@@ -648,14 +680,6 @@ class mmCIFParser:
             k = mmcif_chain_to_entity_id[mmcif_chain_id]
             id_map[k].add(author_chain_id)
 
-        # get the chem_comp type for each mon_id
-        chem_comp_type = {
-            mon_id: comp_type
-            for mon_id, comp_type in zip(
-                self.parsed_info["_chem_comp.id"], self.parsed_info["_chem_comp.type"]
-            )
-        }
-
         # parse full chains from "seqres"
         chains_full = defaultdict(Chain)
         for entity_id, mon_id, idx in zip(
@@ -673,14 +697,42 @@ class mmCIFParser:
                     )
                 )
 
-        # Get chain/polymer types
         chain_type = {}
-        for entity_id, poly_type in zip(
-            self.parsed_info["_entity_poly.entity_id"],
-            self.parsed_info["_entity_poly.type"],
+        # we check if we have _entity_poly
+        if (
+            "_entity_poly.entity_id" in self.parsed_info
+            and "_entity_poly.type" in self.parsed_info
         ):
-            for author_id in id_map[entity_id]:
-                chain_type[author_id] = poly_type
+            # get chain/polymer types
+            for entity_id, poly_type in zip(
+                self.parsed_info["_entity_poly.entity_id"],
+                self.parsed_info["_entity_poly.type"],
+            ):
+                for author_id in id_map[entity_id]:
+                    chain_type[author_id] = poly_type
+        else:
+            # if we don't have _entity_poly, we fall back to chem_comp type for each mon_id
+            # this is for backwards compatibility with older RNA3BD version release mmCIFs
+            chem_comp_type = {
+                mon_id: comp_type
+                for mon_id, comp_type in zip(
+                    self.parsed_info["_chem_comp.id"],
+                    self.parsed_info["_chem_comp.type"],
+                )
+            }
+            for author_id, chain_data in chains_full.items():
+                # "keep" only chains that contain at least one `self.molecule_type`
+                if any(
+                    [
+                        self.molecule_type in chem_comp_type[i.three_letter_code]
+                        for i in chain_data.residues
+                    ]
+                ):
+                    # if RNA we set to self.polymer_type (i.e. "polyribonucleotide")
+                    chain_type[author_id] = self.polymer_type
+                else:
+                    # we just set to "other" if not an RNA
+                    chain_type[author_id] = "other"
 
         # keep only chains of the appropriate polymer type
         chains = {}
@@ -722,12 +774,6 @@ class mmCIFParser:
                 )
 
                 # make sure that the sites actually match, should never be a mismatch
-                """
-                assert (
-                    site.three_letter_code
-                    == chains[site.author_chain_id][seq_idx].three_letter_code
-                ), f"residue mismatch at chain {site.author_chain_id} pos {seq_idx} (expected {site.three_letter_code}, got {chains[site.author_chain_id][seq_idx].three_letter_code})"
-                """
                 if (
                     site.three_letter_code
                     != chains[site.author_chain_id][seq_idx].three_letter_code
