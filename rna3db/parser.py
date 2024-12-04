@@ -431,6 +431,7 @@ class StructureFile:
             f"data_{self.pdb_id}_{author_id}\n"
             f"_entry.id {self.pdb_id}_{author_id}\n"
             f"_pdbx_database_status.recvd_initial_deposition_date {self.release_date}\n"
+            f"_pdbx_audit_revision_history.revision_date {self.release_date}\n"  # this + above for better compatibility
             f"_exptl.method '{self.structure_method.upper()}'\n"
             f"_reflns.d_resolution_high {self.resolution}\n"
             f"_entity_poly.pdbx_seq_one_letter_code_can {self[author_id].sequence}\n"
@@ -589,7 +590,9 @@ class mmCIFParser:
         if "_pdbx_audit_revision_history.revision_date" in self.parsed_info:
             return min(self.parsed_info["_pdbx_audit_revision_history.revision_date"])
         # use deposition date if there are no revisions
-        return self.parsed_info["_pdbx_database_status.recvd_initial_deposition_date"]
+        return min(
+            self.parsed_info["_pdbx_database_status.recvd_initial_deposition_date"]
+        )
 
     @property
     def resolution(self):
@@ -604,7 +607,7 @@ class mmCIFParser:
                     resolutions.append(float(self.parsed_info[res_key][0]))
 
         # if we have an NMR structure and we overwrite default NMR resolution
-        if self.structure_method == "solution nmr" and self.nmr_resolution is not None:
+        if "solution nmr" in self.structure_method and self.nmr_resolution is not None:
             return self.nmr_resolution
 
         if len(resolutions) == 0:
