@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from rna3db.utils import read_json
+from rna3db.utils import read_json, to_case_insensitive
 from rna3db.parser import parse_file
 from pathlib import Path
 from tqdm import tqdm
@@ -25,7 +25,9 @@ def main(args):
                 cluster_path.mkdir(exist_ok=True, parents=True)
                 for chain_name in cluster_content.keys():
                     pdb_id, author_id = chain_name.split("_")
-                    output_path = cluster_path / f"{chain_name}.cif"
+                    output_path = (
+                        cluster_path / f"{to_case_insensitive(chain_name)}.cif"
+                    )
                     pdb_mmcif_path = args.input_mmcif_dir / f"{pdb_id}.cif"
                     if not pdb_mmcif_path.is_file():
                         print(f"WARNING: could not find {pdb_mmcif_path}")

@@ -795,18 +795,26 @@ class mmCIFParser:
         return chains
 
 
-def parse_fasta(path):
+def parse_fasta(path, force_gzip=False):
     """Parse a FASTA file.
 
     Supports multi-line sequences.
 
     Args:
         path (PathLike): Path to input FASTA file.
+        force_gzip (bool, optional): If True, will attempt to read the file as a
+        gzip file.
 
     Returns:
 
     """
-    with open(path) as f:
+    if Path(path).suffix == ".gz" or force_gzip:
+        import gzip
+
+        reader = gzip.open(path, "rt")
+    else:
+        reader = open(path, "r")
+    with reader as f:
         descriptions = []
         sequences = []
         i = -1
