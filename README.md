@@ -4,6 +4,12 @@ A dataset of non-redundant RNA structures from the PDB. RNA3DB contains:
 - All RNA chains in the PDB, labelled with non-coding RNA families
 - Non-redundant clustering of the above chains, suitable for training and benchmarking deep learning models
 
+We provide periodically updated versions of RNA3DB in [JSON](https://en.wikipedia.org/wiki/JSON) format, along with several intermediate steps used to generate the files.
+
+Additionally, as part of RNA3DB, we release the results of [Infernal](http://eddylab.org/infernal/) homology search on all RNA chains found in the PDB. For a short demonstration on how RNA3DB can be used to parse these files, see [tabular_demo](notebooks/tabular_demo.ipynb).
+
+For more general help getting started, see RNA3DB's [Wiki](https://github.com/marcellszi/rna3db/wiki).
+
 ## Download
 The latest version (`2025-10-01-incremental-release`) of RNA3DB can be found under [releases](https://github.com/marcellszi/rna3db/releases/latest/).
 
@@ -17,12 +23,13 @@ We provide the following files:
     - Hierarchical folders of the training/testing sets containing single-chain [PDBx/mmCIF](https://en.wikipedia.org/wiki/Macromolecular_Crystallographic_Information_File) files
     - Most convenient for getting started with training and testing using RNA3DB
 
-## Getting started
-We provide periodically updated versions of RNA3DB in [JSON](https://en.wikipedia.org/wiki/JSON) format, along with several intermediate steps used to generate the files.
+## Customising RNA3DB or building the dataset from scratch
+If you wish to add structures that were not parsed as part of the latest release (e.g. unpublished or unreleased structures that were not in the PDB at the time we downloaded and parsed the data), you will need to [build the dataset from scratch](https://github.com/marcellszi/rna3db/wiki/Building-RNA3DB-from-scratch). 
 
-Additionally, as part of RNA3DB, we release the results of [Infernal](http://eddylab.org/infernal/) homology search on all RNA chains found in the PDB. For a short demonstration on how RNA3DB can be used to parse these files, see [tabular_demo](notebooks/tabular_demo.ipynb).
+However, if you just wish to customise some options, such as set different filtering properties, experiment with E-value thresholds, or use a different training/testing split ratio, you can simply [customise RNA3DB](https://github.com/marcellszi/rna3db/wiki/Customising-RNA3DB).
 
-For more general help getting started, see RNA3DB's [Wiki](https://github.com/marcellszi/rna3db/wiki).
+### Customising RNA3DB
+If you wish to customise an existing release of RNA3DB, please see [the Wiki help page to get started](https://github.com/marcellszi/rna3db/wiki/Customising-RNA3DB).
 
-## Generating the dataset from scratch
-If you wish to build your own dataset from scratch, please see [Building RNA3DB from scratch](https://github.com/marcellszi/rna3db/wiki/Building-RNA3DB-from-scratch).
+### Building the dataset from scratch
+If you wish to build your own dataset from scratch, please see [the Wiki help page to get started](https://github.com/marcellszi/rna3db/wiki/Building-RNA3DB-from-scratch).
