@@ -24,9 +24,9 @@ We provide the following files:
     - Most convenient for getting started with training and testing using RNA3DB
 
 ## Customising RNA3DB or building the dataset from scratch
-If you wish to add structures that were not parsed as part of the latest release (e.g. unpublished or unreleased structures that were not in the PDB at the time we downloaded and parsed the data), you will need to [build the dataset from scratch](https://github.com/marcellszi/rna3db/wiki/Building-RNA3DB-from-scratch). 
+If you wish to add structures that were not parsed as part of the latest release (e.g. unpublished or unreleased structures that were not in the PDB at the time we downloaded and parsed the data), you will need to [build the dataset from scratch](https://github.com/marcellszi/rna3db/wiki/Building-RNA3DB-from-scratch). Note that this process can take several days on compute cluster.
 
-However, if you just wish to customise some options, such as set different filtering properties, experiment with E-value thresholds, or use a different training/testing split ratio, you can simply [customise RNA3DB](https://github.com/marcellszi/rna3db/wiki/Customising-RNA3DB).
+However, if you just wish to customise some options, such as set different filtering properties, experiment with E-value thresholds, or use a different training/testing split ratio, you can simply [customise RNA3DB](https://github.com/marcellszi/rna3db/wiki/Customising-RNA3DB). This process will usually take less than one minute on consumer hardware. 
 
 ### Customising RNA3DB
 If you wish to customise an existing release of RNA3DB, please see [the Wiki help page to get started](https://github.com/marcellszi/rna3db/wiki/Customising-RNA3DB).
