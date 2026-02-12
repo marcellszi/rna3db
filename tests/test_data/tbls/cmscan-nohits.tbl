@@ -1,0 +1,10 @@
+#target name         accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
+#------------------- --------- -------------------- --------- --- -------- -------- -------- -------- ------ ----- ---- ---- ----- ------ --------- --- ---------------------
+MIR854               RF00893   5m0h_A               -          cm        1      221       11       35      +    no    1 0.44   0.0    6.6       2.7 ?   microRNA MIR854
+IRES_Picorna_2       RF00210   5m0h_A               -          cm      307      414       11       35      +    no    1 0.44   0.0    5.3       2.9 ?   Aphthovirus internal ribosome entry site (IRES)
+RNaseP_bact_b        RF00011   5m0h_A               -          cm      132      161        9       40      +    no    1 0.38   0.0    6.2         3 ?   Bacterial RNase P class B
+SNORD93              RF00606   5m0h_A               -          cm        1       74       11       35      +    no    1 0.44   0.0   11.8       4.1 ?   Small nucleolar RNA SNORD93
+GABA3                RF01803   5m0h_A               -          cm        1       54       39        9      -    no    1 0.39   0.0   10.7       5.1 ?   Editing element of GABA-3 exon 9
+GEBRO                RF02988   5m0h_A               -          cm      192      219       10       35      +    no    1 0.42   0.0    5.0       5.3 ?   GEBRO RNA
+Molybdenum           RF01055   5m0h_A               -          cm       26       50       11       35      +    no    1 0.44   0.0    7.8         9 ?   Molybdenum/Tungsten riboswitch aptamer (Moco RNA motif)
+SOX2OT_exon1         RF01951   5m0h_A               -          cm        1      230       10       34      +    no    1 0.44   0.0    3.9       9.3 ?   SOX2 overlapping transcript exon 1

@@ -1,0 +1,13 @@
+#target name         accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
+#------------------- --------- -------------------- --------- --- -------- -------- -------- -------- ------ ----- ---- ---- ----- ------ --------- --- ---------------------
+HIV-1_SL4            RF01382   3cgs_B               -          cm       11       20       13        4      -    5'    2 0.60   0.0    8.2       5.5 ?   HIV-1 stem-loop 4 packaging signal
+Purine               RF00167   1y27_X               -          cm       19       87        2       68      +    no    1 0.49   0.0   66.2   2.3e-12 !   Purine riboswitch aptamer
+2dG-II               RF03165   1y27_X               -          cm        1       70        1       68      +    3'    3 0.50   0.0   31.2   1.6e-06 !   2dG-II purine riboswitch aptamer
+tRNA                 RF00005   3tup_T               -          cm        1       71        1       73      +    no    1 0.58   0.0   67.6   1.6e-15 !   tRNA
+tRNA-Sec             RF01852   3tup_T               -          cm        1       91        1       72      +    no    1 0.58   0.0   27.8    0.0003 !   Selenocysteine transfer RNA
+beta_tmRNA           RF01850   3tup_T               -          cm       85      113       48       76      +    3'    4 0.66   0.0    6.2       1.7 ?   Betaproteobacteria transfer-messenger RNA
+YrlA                 RF02553   3tup_T               -          cm       56      114        1       59      +    5'    2 0.56   0.0   12.0       3.4 ?   Y RNA-like
+cyano_tmRNA          RF01851   3tup_T               -          cm       59       89       46       76      +    3'    4 0.65   0.0    6.2         4 ?   Cyanobacteria transfer-messenger RNA
+Tombus_3_III         RF00215   3tup_T               -          cm       33       70        1       35      +    5'    2 0.57   0.0   10.1       4.6 ?   Tombus virus defective interfering (DI) RNA region 3
+tRNA                 RF00005   1ehz_A               -          cm        1       71        1       73      +    no    1 0.53   0.0   67.7   1.6e-15 !   tRNA
+PreQ1-III            RF02680   1ehz_A               -          cm        1       59       60        1      -    3'    3 0.55   0.0   12.1       1.4 ?   PreQ1-III (pre queuosine) riboswitch aptamer

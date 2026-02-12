@@ -7,9 +7,9 @@ from rna3db.parser import parse_file, Residue, Chain
 
 
 class TestmmCIFWriter(unittest.TestCase):
-    test_trna_path = Path(__file__).parent / "test_data" / "1ehz.cif"
+    test_trna_path = Path(__file__).parent / "test_data" / "mmcifs" / "1ehz.cif"
     test_old_path = Path(__file__).parent / "test_data" / "old_1ehz_A.cif"
-    test_two_chain_path = Path(__file__).parent / "test_data" / "3cgs.cif"
+    test_two_chain_path = Path(__file__).parent / "test_data" / "mmcifs" / "3cgs.cif"
 
     def test_simple_mmcif_read(self):
         sf = parse_file(self.test_trna_path)

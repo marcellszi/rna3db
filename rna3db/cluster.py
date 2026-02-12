@@ -97,6 +97,11 @@ class StructureClusterer:
         tbl = tbl.filter_attr_by_set("query_name", set(data.keys()))
         tbl = tbl.filter_e_value(self.e_value_cutoff)
 
+        repr_mapping = {}
+        for repr_k, repr_v in data.items():
+            for chain_k in repr_v.keys():
+                repr_mapping[chain_k] = repr_k
+
         # add chain nodes
         for chain_node in set(data.keys()):
             graph.add_chain(chain_node)
@@ -107,7 +112,8 @@ class StructureClusterer:
 
         # add edges
         for hit in tbl:
-            graph.add_edge(hit.query_name, hit.target_accession)
+            query_k = repr_mapping[hit.query_name]
+            graph.add_edge(query_k, hit.target_accession)
 
         # do DFS
         components = graph.components()
