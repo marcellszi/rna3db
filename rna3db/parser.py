@@ -6,7 +6,6 @@ from Bio import PDB
 from rna3db.utils import PathLike
 
 import dataclasses
-import json
 
 
 def parse_as_dict(
@@ -218,74 +217,31 @@ class Chain:
 
 
 class ModificationHandler:
-    JSON_PATH_DEFAULTS = [
-        "modifications_cache.json",
-        "data/modifications_cache.json",
-        "../data/modifications_cache.json",
-    ]
-
     def __init__(self, json_path: PathLike = None):
         """Used for converting `three_letter_code`s to `one_letter_code`s, including modifications.
 
+        On first use, automatically downloads and processes the Chemical Component
+        Dictionary (CCD) from wwPDB, caching the result in ``~/.cache/rna3db/``.
+        Set the ``RNA3DB_CACHE_DIR`` environment variable to override the cache location.
+
         Args:
-            json_path (PathLike, optional): Path to `modifications_cache.json`, generated from a Chemical Component
-                Dictionary .cif file. If not provided, `JSON_PATH_DEFAULTS` are checked for a valid path.
-
-        Attributes:
-            JSON_PATH_DEFAULTS (Sequence[PathLike]): List of paths checked for a `modifications_cache.json` file when
-                `json_path` is not initialised.
+            json_path (PathLike, optional): Explicit path to a modifications cache JSON file.
+                If not provided, the cache is loaded (or generated) automatically.
         """
-        # try to see we can find the modifications_cache.json in any of the default paths
-        if json_path is None:
-            for path in self.JSON_PATH_DEFAULTS:
-                if Path(path).is_file():
-                    json_path = Path(path)
-                    break
+        from rna3db.modifications import load
 
-        # if we still haven't found it, we need to throw an exception
-        if json_path is None:
-            raise FileNotFoundError(
-                "Could not find `modifications_cache.json` in JSON_PATH_DEFAULTS."
-            )
-
-        with open(json_path) as f:
-            self.modifications = json.load(f)
+        self.modifications = load(Path(json_path) if json_path else None)
 
     def is_rna(self, three_letter_code: str) -> bool:
-        """Check if `three_letter_code` is RNA nucleic acid.
+        """Check if `three_letter_code` is a known RNA/DNA nucleic acid residue.
 
         Args:
             three_letter_code (str): Three letter code to check.
 
         Returns:
-            bool: True if `three_letter_code` is typically an RNA nucleic acid, False otherwise.
-
+            bool: True if `three_letter_code` is a known nucleic acid residue.
         """
-        return three_letter_code in self.modifications["rna"]
-
-    def is_protein(self, three_letter_code: str) -> bool:
-        """Check if `three_letter_code` is an amino acid.
-
-        Args:
-            three_letter_code (str): Three letter code to check.
-
-        Returns:
-            bool: True if `three_letter_code` is an amino acid.
-
-        """
-        return three_letter_code in self.modifications["protein"]
-
-    def protein_letters_3to1(self, three_letter_code: str) -> str:
-        """Convert amino acid `three_letter_code` to `one_letter_code`.
-
-        Args:
-            three_letter_code (str): Three letter code to check.
-
-        Returns:
-           str: one_letter_code of an amino acid, "X" if cannot be found.
-
-        """
-        return self.modifications["protein"].get(three_letter_code, "X")
+        return three_letter_code in self.modifications
 
     def rna_letters_3to1(self, three_letter_code: str) -> str:
         """Convert RNA nucleic acid `three_letter_code` to `one_letter_code`.
@@ -296,7 +252,7 @@ class ModificationHandler:
         Returns:
            str: one_letter_code of RNA nucleic acid, "N" if cannot be found.
         """
-        return self.modifications["rna"].get(three_letter_code, "N")
+        return self.modifications.get(three_letter_code, "N")
 
 
 class StructureFile:
@@ -573,7 +529,7 @@ class mmCIFParser:
             self.letters_3to1 = lambda x: modification_handler.rna_letters_3to1(x)
             self.polymer_type = "polyribonucleotide"
         elif molecule_type == "protein":
-            self.letters_3to1 = lambda x: modification_handler.protein_letters_3to1(x)
+            self.letters_3to1 = lambda _: "X"
             self.polymer_type = "polypeptide"
         else:
             raise ValueError('molecule_type must be one of "RNA" or "protein".')
