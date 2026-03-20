@@ -11,7 +11,6 @@ import dataclasses
 def parse_as_dict(
     path: PathLike,
     modifications_cache_path: PathLike = None,
-    molecule_type: str = "RNA",
     nmr_resolution: float = None,
     include_atoms: bool = False,
 ):
@@ -33,7 +32,7 @@ def parse_as_dict(
     # we want to make sure this never fails and interrupts the parse
     try:
         structure_file = StructureFile(
-            path, modification_handler, molecule_type, nmr_resolution, include_atoms
+            path, modification_handler, nmr_resolution, include_atoms
         )
         for chain in structure_file:
             chain_id = f"{structure_file.pdb_id}_{chain.author_id}"
@@ -60,7 +59,6 @@ def parse_as_dict(
 def parse_file(
     path: PathLike,
     modifications_cache_path: PathLike = None,
-    molecule_type: str = "RNA",
     nmr_resolution: float = None,
     include_atoms: bool = False,
 ):
@@ -68,21 +66,15 @@ def parse_file(
 
     Args:
         path (PathLike): path to mmCIF file to parse
-        modifications_cache_path (PathLike, optinal): path to
+        modifications_cache_path (PathLike, optional): path to
             modifications_cache, default is None
-        molecule_type (str, default="RNA"): One of "RNA" or "protein".
-            Specifies whether RNA or protein chains should be extracted from
-            the file. NOTE: support for proteins is currently experimental.
-
 
     Returns:
         StructureFile: object containing data of parsed file
     """
 
     modification_handler = ModificationHandler(modifications_cache_path)
-    return StructureFile(
-        path, modification_handler, molecule_type, nmr_resolution, include_atoms
-    )
+    return StructureFile(path, modification_handler, nmr_resolution, include_atoms)
 
 
 class Residue:
@@ -260,7 +252,6 @@ class StructureFile:
         self,
         path: PathLike,
         modification_handler: ModificationHandler,
-        molecule_type: str = "RNA",
         nmr_resolution: float = None,
         include_atoms: bool = False,
     ):
@@ -273,8 +264,6 @@ class StructureFile:
         Args:
             path (:PathLike:): The path to the file.
             modification_handler (:ModificationHandler:):
-            molecule_type (str, default="RNA"): One of "RNA" or "protein". Specifies whether RNA or protein chains
-                should be extracted from the file.
 
         Attributes:
             path (Path): The path of the input file.
@@ -297,9 +286,7 @@ class StructureFile:
             raise ValueError(f"The extension `{path.suffix.lower()}` is not supported.")
 
         # make the parser
-        parser = file_parser(
-            path, modification_handler, molecule_type, nmr_resolution, include_atoms
-        )
+        parser = file_parser(path, modification_handler, nmr_resolution, include_atoms)
 
         # use parser to get attributes
         self.pdb_id = parser.pdb_id
@@ -516,23 +503,14 @@ class mmCIFParser:
         self,
         path: PathLike,
         modification_handler: ModificationHandler,
-        molecule_type: str = "RNA",
         nmr_resolution: float = None,
         include_atoms: bool = False,
     ):
         self.path = path
-        self.molecule_type = molecule_type
         self.nmr_resolution = nmr_resolution
         self.include_atoms = include_atoms
 
-        if molecule_type == "RNA":
-            self.letters_3to1 = lambda x: modification_handler.rna_letters_3to1(x)
-            self.polymer_type = "polyribonucleotide"
-        elif molecule_type == "protein":
-            self.letters_3to1 = lambda _: "X"
-            self.polymer_type = "polypeptide"
-        else:
-            raise ValueError('molecule_type must be one of "RNA" or "protein".')
+        self.letters_3to1 = lambda x: modification_handler.rna_letters_3to1(x)
 
         self.parsed_info = PDB.MMCIF2Dict.MMCIF2Dict(self.path)
 
@@ -680,15 +658,14 @@ class mmCIFParser:
                 )
             }
             for author_id, chain_data in chains_full.items():
-                # "keep" only chains that contain at least one `self.molecule_type`
+                # "keep" only chains that contain at least one RNA residue
                 if any(
                     [
-                        self.molecule_type in chem_comp_type[i.three_letter_code]
+                        "RNA" in chem_comp_type[i.three_letter_code]
                         for i in chain_data.residues
                     ]
                 ):
-                    # if RNA we set to self.polymer_type (i.e. "polyribonucleotide")
-                    chain_type[author_id] = self.polymer_type
+                    chain_type[author_id] = "polyribonucleotide"
                 else:
                     # we just set to "other" if not an RNA
                     chain_type[author_id] = "other"
@@ -696,7 +673,7 @@ class mmCIFParser:
         # keep only chains of the appropriate polymer type
         chains = {}
         for author_chain_id, chain_data in chains_full.items():
-            if self.polymer_type in chain_type[author_chain_id]:
+            if "polyribonucleotide" in chain_type[author_chain_id]:
                 chains[author_chain_id] = chain_data
 
         # find starting index of relevant chains
