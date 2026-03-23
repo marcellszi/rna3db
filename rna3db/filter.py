@@ -2,64 +2,63 @@ import logging
 import json
 
 from pathlib import Path
-from rna3db.utils import write_json
 
 
-class Filterer:
-    def __init__(
-        self,
-        min_length: int = 32,
-        max_resolution: float = 9.0,
-        single_ratio_cutoff: float = 0.8,
-        max_unknown_ratio: float = 0.3,
-    ):
-        self.min_length = min_length
-        self.max_resolution = max_resolution
-        self.single_ratio_cutoff = single_ratio_cutoff
-        self.max_unknown_ratio = max_unknown_ratio
+def _is_low_resolution(d: dict, cutoff: float) -> bool:
+    return d["resolution"] > cutoff
 
-        self.filters = []
-        if self.min_length:
-            self.filters.append(self.is_short_sequence)
-        if self.max_resolution:
-            self.filters.append(self.is_low_resolution)
-        if self.single_ratio_cutoff:
-            self.filters.append(self.is_singleratio_sequence)
-        if self.max_unknown_ratio:
-            self.filters.append(self.sequence_has_many_unknowns)
 
-    def is_low_resolution(self, d: dict):
-        return d["resolution"] > self.max_resolution
+def _is_short_sequence(d: dict, min_length: int) -> bool:
+    return len(d["sequence"]) < min_length
 
-    def is_short_sequence(self, d: dict):
-        return len(d["sequence"]) < self.min_length
 
-    def is_singleratio_sequence(self, d: dict):
-        l = len(d["sequence"])
-        for nt in set(d["sequence"]):
-            if d["sequence"].count(nt) / l > self.single_ratio_cutoff:
-                return True
-        return False
+def _is_singleratio_sequence(d: dict, cutoff: float) -> bool:
+    l = len(d["sequence"])
+    for nt in set(d["sequence"]):
+        if d["sequence"].count(nt) / l > cutoff:
+            return True
+    return False
 
-    def sequence_has_many_unknowns(self, d: dict):
-        ratio = d["sequence"].count("N") / len(d["sequence"])
-        return ratio > self.max_unknown_ratio
 
-    def apply_filters(self, data: dict, json_filter_log_path: Path = None):
-        logging.info(f"Applying filters {[f.__name__ for f in self.filters]}")
-        filtered_data = {}
-        applied_filters = {}
+def _has_many_unknowns(d: dict, cutoff: float) -> bool:
+    return d["sequence"].count("N") / len(d["sequence"]) > cutoff
 
-        for iid, d in data.items():
-            conditions = [f(d) for f in self.filters]
-            if not any(conditions):
-                filtered_data[iid] = d.copy()
-            applied_filters[iid] = [
-                self.filters[i].__name__ for i, b in enumerate(conditions) if b
-            ]
 
-        if json_filter_log_path is not None:
-            with open(json_filter_log_path, "w") as f:
-                json.dump(applied_filters, f, indent=4)
+def apply_filters(
+    data: dict,
+    min_length: int = 32,
+    max_resolution: float = 9.0,
+    single_ratio_cutoff: float = 0.8,
+    max_unknown_ratio: float = 0.3,
+    filter_log_path: Path = None,
+) -> dict:
+    # Build (name, predicate, threshold) tuples for each active filter.
+    # A filter is skipped if its threshold is falsy (0 or None).
+    active = []
+    if min_length:
+        active.append(("is_short_sequence", _is_short_sequence, min_length))
+    if max_resolution:
+        active.append(("is_low_resolution", _is_low_resolution, max_resolution))
+    if single_ratio_cutoff:
+        active.append(
+            ("is_singleratio_sequence", _is_singleratio_sequence, single_ratio_cutoff)
+        )
+    if max_unknown_ratio:
+        active.append(("has_many_unknowns", _has_many_unknowns, max_unknown_ratio))
 
-        return filtered_data
+    logging.info(f"Applying filters {[name for name, _, _ in active]}")
+
+    filtered_data = {}
+    applied_filters = {}
+
+    for iid, d in data.items():
+        hits = [name for name, pred, threshold in active if pred(d, threshold)]
+        if not hits:
+            filtered_data[iid] = d.copy()
+        applied_filters[iid] = hits
+
+    if filter_log_path is not None:
+        with open(filter_log_path, "w") as f:
+            json.dump(applied_filters, f, indent=4)
+
+    return filtered_data

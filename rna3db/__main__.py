@@ -2,14 +2,13 @@ from multiprocessing import Pool
 from functools import partial
 from pathlib import Path
 from tqdm import tqdm
+import argparse
 
 from rna3db.parsers.structure import StructureFile
-from rna3db.filter import Filterer
-from rna3db.cluster import SequenceClusterer, StructureClusterer
+from rna3db.filter import apply_filters
+from rna3db.cluster import cluster_sequences, cluster_structures
 from rna3db.split import split
 from rna3db.utils import read_json, write_json
-
-import argparse
 
 
 def _read_as_dict(
@@ -38,137 +37,94 @@ def _read_as_dict(
     return d
 
 
-def parse(
-    input_dir: Path,
-    output_path: Path,
-    extension: str = "cif",
-    cpu: int = None,
-    nmr_resolution: float = None,
-    include_atoms: bool = False,
-):
-    files = list(Path(input_dir).glob(f"*.{extension}"))
+def _do_parse(args, input_path: Path, output_path: Path):
+    files = list(input_path.glob("*.cif"))
     data = {}
-
     f = partial(
-        _read_as_dict, nmr_resolution=nmr_resolution, include_atoms=include_atoms
+        _read_as_dict,
+        nmr_resolution=args.nmr_resolution,
+        include_atoms=args.include_atoms,
     )
-    with Pool(processes=cpu) as p, tqdm(total=len(files)) as pbar:
+    with Pool(processes=args.cpu) as p, tqdm(total=len(files)) as pbar:
         for d in p.imap_unordered(f, files):
             data |= d
             pbar.update()
-
     write_json(data, output_path)
 
 
-def filter(
-    input_path: Path,
-    output_path: Path,
-    min_length: int = 32,
-    max_resolution: float = 9.0,
-    single_ratio_cutoff: float = 0.8,
-    max_unknown_ratio: float = 0.3,
-):
+def _do_filter(args, input_path: Path, output_path: Path):
     data = read_json(input_path)
-
-    filterer = Filterer(
-        min_length=min_length,
-        max_resolution=max_resolution,
-        single_ratio_cutoff=single_ratio_cutoff,
-        max_unknown_ratio=max_unknown_ratio,
+    filtered = apply_filters(
+        data,
+        min_length=args.min_length,
+        max_resolution=args.max_resolution,
+        single_ratio_cutoff=args.single_ratio_cutoff,
+        max_unknown_ratio=args.max_unknown_ratio,
+        filter_log_path=args.filter_log_path,
     )
+    write_json(filtered, output_path)
 
-    filtered_data = filterer.apply_filters(
-        data, json_filter_log_path=args.filter_log_path
+
+def _do_cluster(args, input_path: Path, output_path: Path):
+    only_sequence = getattr(args, "only_sequence", False)
+    only_structure = getattr(args, "only_structure", False)
+
+    if not only_structure:
+        cluster = cluster_sequences(
+            input_path,
+            output_path,
+            mmseqs2_binary_path=args.mmseqs_binary_path,
+            min_seq_id=args.min_seq_id,
+            min_coverage=args.min_seq_coverage,
+            coverage_mode=args.mmseqs_coverage_mode,
+            sensitivity=args.mmseqs_sensitivity,
+            alignment_mode=args.mmseqs_alignment_mode,
+            max_seqs=args.mmseqs_max_seqs,
+        )
+        write_json(cluster, output_path)
+        input_path = output_path
+
+    if not only_sequence:
+        cluster = cluster_structures(
+            input_path, args.tbl_dir, args.structural_e_value_cutoff
+        )
+        write_json(cluster, output_path)
+
+
+def _do_split(args, input_path: Path, output_path: Path):
+    split(
+        input_path,
+        output_path,
+        splits=[
+            args.train_ratio,
+            args.valid_ratio,
+            1 - args.train_ratio - args.valid_ratio,
+        ],
+        force_zero_last=args.force_zero_test,
     )
-
-    write_json(filtered_data, output_path)
-
-
-def cluster_sequence(
-    input_path: Path,
-    output_path: Path,
-    mmseqs_binary_path: Path = None,
-    min_seq_id: float = 0.99,
-    min_coverage: float = 0.99,
-    coverage_mode: int = 1,
-    sensitivity: float = 7.5,
-    alignment_mode: int = 3,
-    max_seqs: int = 10000,
-):
-    seq_cluster = SequenceClusterer(
-        mmseqs_binary_path,
-        min_seq_id=min_seq_id,
-        min_coverage=min_coverage,
-        coverage_mode=coverage_mode,
-        sensitivity=sensitivity,
-        alignment_mode=alignment_mode,
-        max_seqs=max_seqs,
-    )
-
-    cluster = seq_cluster.cluster(input_path, output_path)
-    write_json(cluster, output_path)
-
-
-def cluster_structure(
-    input_path: Path,
-    output_path: Path,
-    tbl_dir: Path,
-    e_value_cutoff: float = 1,
-):
-    str_cluster = StructureClusterer(e_value_cutoff)
-    cluster = str_cluster.cluster(input_path, tbl_dir)
-    write_json(cluster, output_path)
 
 
 def main(args):
     if args.command == "parse":
-        parse(
-            args.input,
-            args.output,
-            cpu=args.cpu,
-            nmr_resolution=args.nmr_resolution,
-            include_atoms=args.include_atoms,
-        )
+        _do_parse(args, args.input, args.output)
     elif args.command == "filter":
-        filter(
-            args.input,
-            args.output,
-            args.min_length,
-            args.max_resolution,
-            args.single_ratio_cutoff,
-            args.max_unknown_ratio,
-        )
+        _do_filter(args, args.input, args.output)
     elif args.command == "cluster":
-        if not args.only_structure:
-            cluster_sequence(
-                args.input,
-                args.output,
-                args.mmseqs_binary_path,
-                args.min_seq_id,
-                args.min_seq_coverage,
-                args.mmseqs_coverage_mode,
-                args.mmseqs_sensitivity,
-                args.mmseqs_alignment_mode,
-                args.mmseqs_max_seqs,
-            )
-            args.input = args.output
-        if not args.only_sequence:
-            cluster_structure(
-                args.input, args.output, args.tbl_dir, args.structural_e_value_cutoff
-            )
+        _do_cluster(args, args.input, args.output)
     elif args.command == "split":
-        split(
-            args.input,
-            args.output,
-            splits=[
-                args.train_ratio,
-                args.valid_ratio,
-                1 - args.train_ratio - args.valid_ratio,
-            ],
-            force_zero_last=args.force_zero_test,
-        )
+        _do_split(args, args.input, args.output)
+    elif args.command == "run":
+        args.output.mkdir(parents=True, exist_ok=True)
+        parsed = args.output / "parsed.json"
+        filtered = args.output / "filtered.json"
+        clustered = args.output / "clustered.json"
+        split_out = args.output / "split.json"
+        _do_parse(args, args.input, parsed)
+        _do_filter(args, parsed, filtered)
+        _do_cluster(args, filtered, clustered)
+        _do_split(args, clustered, split_out)
     else:
-        raise ValueError
+        raise ValueError(f"Unknown command: {args.command}")
 
 
 if __name__ == "__main__":
@@ -177,124 +133,192 @@ if __name__ == "__main__":
         "--cpu", type=int, default=None, help="Number of CPUs to use when able"
     )
 
-    # subparsers for different commands
     subparsers = parser.add_subparsers(
         dest="command", title="Available commands", required=True
     )
 
-    # subparser for the "parse" command
-    parse_parser = subparsers.add_parser("parse", help="Parse PDB and extract RNAs")
-    parse_parser.add_argument(
-        "input", type=Path, help="Directory containing mmCIF files to parse"
-    )
-    parse_parser.add_argument("output", type=Path, help="Output JSON file")
-    parse_parser.add_argument(
+    _parse_args = argparse.ArgumentParser(add_help=False)
+    _parse_args.add_argument(
         "--nmr_resolution",
         type=float,
+        default=None,
         help="Resolution to use for NMR structures. By default we use float('inf').",
     )
-    parse_parser.add_argument(
+    _parse_args.add_argument(
         "--include_atoms",
         action="store_true",
-        help="Whether to include the XYZ atom coordinates in the parsed output.",
+        help="Include XYZ atom coordinates in the parsed output.",
     )
 
-    # subparser for the "filter" command
-    filter_parser = subparsers.add_parser("filter", help="Filter a JSON")
-    filter_parser.add_argument("input", type=Path, help="Input JSON file")
-    filter_parser.add_argument("output", type=Path, help="Output JSON file")
-    filter_parser.add_argument(
-        "--single_ratio_cutoff",
-        type=float,
-        default=0.8,
-        help="Filter chains where a single nucleotide makes up more than this fraction of residues",
+    _filter_args = argparse.ArgumentParser(add_help=False)
+    _filter_args.add_argument(
+        "--min_length", type=int, default=32, help="Filter chains shorter than this"
     )
-    filter_parser.add_argument(
-        "--max_unknown_ratio",
-        type=float,
-        default=0.3,
-        help="Filter chains with more than this fraction of unknown nucleotides",
-    )
-    filter_parser.add_argument(
+    _filter_args.add_argument(
         "--max_resolution",
         type=float,
         default=9.0,
         help="Filter chains over this resolution",
     )
-    filter_parser.add_argument(
-        "--min_length", type=int, default=32, help="Filter chains shorter than this"
+    _filter_args.add_argument(
+        "--single_ratio_cutoff",
+        type=float,
+        default=0.8,
+        help=(
+            "Filter chains where a single nucleotide makes up more than "
+            "this fraction of residues"
+        ),
     )
-    filter_parser.add_argument(
+    _filter_args.add_argument(
+        "--max_unknown_ratio",
+        type=float,
+        default=0.3,
+        help="Filter chains with more than this fraction of unknown nucleotides",
+    )
+    _filter_args.add_argument(
         "--filter_log_path",
         type=Path,
         default=None,
-        help="Path to filter log. The filter log shows which filters hit each sequence.",
+        help="Path to filter log showing which filters hit each sequence.",
     )
 
-    # subparser for the "cluster" command
-    cluster_parser = subparsers.add_parser(
-        "cluster", help="Cluster RNAs by sequence and structure similarity"
-    )
-    cluster_parser.add_argument("input", type=Path, help="Input JSON file")
-    cluster_parser.add_argument("output", type=Path, help="Output JSON file")
-    cluster_parser.add_argument(
+    _cluster_args = argparse.ArgumentParser(add_help=False)
+    _cluster_args.add_argument(
         "--tbl_dir", type=Path, help="Directory containing .tbl files"
     )
-    cluster_parser.add_argument(
-        "--min_seq_id", type=float, default=0.99, help="Minimum Sequence Identity"
+    _cluster_args.add_argument(
+        "--min_seq_id",
+        type=float,
+        default=0.99,
+        help="Minimum sequence identity for a match to be retained (--min-seq-id, range 0.0-1.0).",
     )
-    cluster_parser.add_argument(
-        "--min_seq_coverage", type=float, default=0.99, help="Minimum Sequence Coverage"
+    _cluster_args.add_argument(
+        "--min_seq_coverage",
+        type=float,
+        default=0.99,
+        help=(
+            "Minimum fraction of aligned residues required for a match "
+            "(-c, range 0.0-1.0). Interpreted according to --mmseqs_coverage_mode."
+        ),
     )
-    cluster_parser.add_argument(
+    _cluster_args.add_argument(
         "--mmseqs_binary_path",
         type=Path,
-        help="Path to MMseqs2 binary. May be required if RNA3DB cannot find MMseqs2's installation.",
+        default=None,
+        help=(
+            "Path to MMseqs2 binary. May be required if RNA3DB cannot "
+            "find MMseqs2's installation."
+        ),
     )
-    cluster_parser.add_argument(
-        "--mmseqs_coverage_mode", type=int, default=1, help="MMseqs Coverage Mode"
+    _cluster_args.add_argument(
+        "--mmseqs_coverage_mode",
+        type=int,
+        default=1,
+        help=(
+            "Defines how --min_seq_coverage is applied (--cov-mode). "
+            "0 = bidirectional, 1 = target coverage only, 2 = query coverage only."
+        ),
     )
-    cluster_parser.add_argument(
-        "--mmseqs_sensitivity", type=float, default=7.5, help="MMseqs Sensitivity"
+    _cluster_args.add_argument(
+        "--mmseqs_sensitivity",
+        type=float,
+        default=7.5,
+        help=(
+            "Prefilter sensitivity (-s). Higher values find more distant homologs "
+            "at the cost of speed: 1.0 fastest, 4.0 fast, 7.5 sensitive."
+        ),
     )
-    cluster_parser.add_argument(
-        "--mmseqs_alignment_mode", type=int, default=3, help="MMseqs Alignment Mode"
+    _cluster_args.add_argument(
+        "--mmseqs_alignment_mode",
+        type=int,
+        default=3,
+        help=(
+            "Alignment information to compute (--alignment-mode). "
+            "0 = automatic, 1 = score and end position, 2 = score/end/start, "
+            "3 = full alignment with sequence identity, 4 = ungapped only."
+        ),
     )
-    cluster_parser.add_argument(
-        "--mmseqs_max_seqs", type=int, default=3, help="MMseqs max seqs"
+    _cluster_args.add_argument(
+        "--mmseqs_max_seqs",
+        type=int,
+        default=10000,
+        help=(
+            "Maximum results per query passed by the prefilter (--max-seqs). "
+            "Higher values increase sensitivity but slow down the search."
+        ),
     )
-    cluster_parser.add_argument(
+    _cluster_args.add_argument(
         "--structural_e_value_cutoff",
         type=float,
         default=1.0,
-        help="Structural E-Value Cutoff used to build graph edges",
+        help="Structural E-value cutoff used to build graph edges",
     )
-    seq_struct_parser = cluster_parser.add_mutually_exclusive_group()
-    seq_struct_parser.add_argument("--only_sequence", action="store_true")
-    seq_struct_parser.add_argument("--only_structure", action="store_true")
 
-    # subparser for the "split" command
-    split_parser = subparsers.add_parser(
-        "split", help="Split RNA data into training and test sets"
-    )
-    split_parser.add_argument("input", type=Path, help="Input JSON file")
-    split_parser.add_argument("output", type=Path, help="Output JSON file")
-    split_parser.add_argument(
+    _split_args = argparse.ArgumentParser(add_help=False)
+    _split_args.add_argument(
         "--train_ratio",
         type=float,
         default=0.7,
         help="Ratio of data to use for the training set",
     )
-    split_parser.add_argument(
+    _split_args.add_argument(
         "--valid_ratio",
         type=float,
         default=0.0,
-        help="Ratio of the data to use for the validation set",
+        help="Ratio of data to use for the validation set",
     )
-    split_parser.add_argument(
+    _split_args.add_argument(
         "--force_zero_test",
         action="store_true",
         help="Force component zero into the test set",
+    )
+
+    parse_parser = subparsers.add_parser(
+        "parse", parents=[_parse_args], help="Parse mmCIF files and extract RNAs"
+    )
+    parse_parser.add_argument(
+        "input", type=Path, help="Directory containing mmCIF files to parse"
+    )
+    parse_parser.add_argument("output", type=Path, help="Output JSON file")
+
+    filter_parser = subparsers.add_parser(
+        "filter", parents=[_filter_args], help="Filter a parsed JSON"
+    )
+    filter_parser.add_argument("input", type=Path, help="Input JSON file")
+    filter_parser.add_argument("output", type=Path, help="Output JSON file")
+
+    cluster_parser = subparsers.add_parser(
+        "cluster",
+        parents=[_cluster_args],
+        help="Cluster RNAs by sequence and structure similarity",
+    )
+    cluster_parser.add_argument("input", type=Path, help="Input JSON file")
+    cluster_parser.add_argument("output", type=Path, help="Output JSON file")
+    seq_struct_group = cluster_parser.add_mutually_exclusive_group()
+    seq_struct_group.add_argument("--only_sequence", action="store_true")
+    seq_struct_group.add_argument("--only_structure", action="store_true")
+
+    split_parser = subparsers.add_parser(
+        "split", parents=[_split_args], help="Split clustered data into train/test sets"
+    )
+    split_parser.add_argument("input", type=Path, help="Input JSON file")
+    split_parser.add_argument("output", type=Path, help="Output JSON file")
+
+    run_parser = subparsers.add_parser(
+        "run",
+        parents=[_parse_args, _filter_args, _cluster_args, _split_args],
+        help="Run all steps: parse, filter, cluster, split",
+    )
+    run_parser.add_argument(
+        "input", type=Path, help="Directory containing mmCIF files to parse"
+    )
+    run_parser.add_argument(
+        "output",
+        type=Path,
+        help=(
+            "Output directory. Writes parsed.json, filtered.json, "
+            "clustered.json, and split.json."
+        ),
     )
 
     args = parser.parse_args()

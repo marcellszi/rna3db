@@ -281,6 +281,7 @@ class StructureFile:
             entity_poly_seq_data.append((1, res.index + 1, res.code, "n"))
             for idx, (atom_name, atom_coords) in enumerate(res.atoms.items()):
                 x, y, z = atom_coords
+                # fmt: off
                 atom_site_data.append(
                     (
                         "ATOM",       # group_PDB
@@ -306,6 +307,7 @@ class StructureFile:
                         1,            # pdbx_PDB_model_num
                     )
                 )
+                # fmt: on
 
         # build required strings
         header_str = (
