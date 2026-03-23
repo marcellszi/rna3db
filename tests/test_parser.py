@@ -1,3 +1,5 @@
+import shutil
+import tempfile
 import unittest
 
 from tempfile import NamedTemporaryFile
@@ -207,6 +209,38 @@ class TestmmCIFWriter(unittest.TestCase):
                 "C4": (52.356, 44.836, 53.879),
             },
         )
+
+
+class TestStructureFormat(unittest.TestCase):
+    test_trna_path = Path(__file__).parent / "test_data" / "mmcifs" / "1ehz.cif"
+
+    def test_explicit_mmcif_format(self):
+        sf = structure.read(self.test_trna_path, format="mmcif")
+        self.assertEqual(list(sf.chains.keys()), ["A"])
+
+    def test_unknown_extension_defaults_to_mmcif(self):
+        """Files with unrecognised extensions should be parsed as mmCIF."""
+        with tempfile.NamedTemporaryFile(suffix=".unknown") as f:
+            shutil.copy(self.test_trna_path, f.name)
+            sf = structure.read(f.name)
+        self.assertEqual(list(sf.chains.keys()), ["A"])
+
+    def test_pdb_extension_raises(self):
+        with tempfile.NamedTemporaryFile(suffix=".pdb") as f:
+            with self.assertRaises(NotImplementedError):
+                structure.read(f.name)
+
+    def test_explicit_pdb_raises(self):
+        with self.assertRaises(NotImplementedError):
+            structure.read(self.test_trna_path, format="pdb")
+
+    def test_explicit_pdb_case_insensitive(self):
+        """format parameter should be case-insensitive."""
+        with self.assertRaises(NotImplementedError):
+            structure.read(self.test_trna_path, format="PDB")
+
+        with self.assertRaises(NotImplementedError):
+            structure.read(self.test_trna_path, format="Pdb")
 
 
 if __name__ == "__main__":

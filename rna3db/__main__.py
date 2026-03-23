@@ -38,21 +38,23 @@ def _read_as_dict(
 
 
 def _do_parse(args, input_path: Path, output_path: Path):
-    files = list(input_path.glob("*.cif"))
+    files = sorted(input_path.glob("*.cif"))
     data = {}
     f = partial(
         _read_as_dict,
         nmr_resolution=args.nmr_resolution,
         include_atoms=args.include_atoms,
     )
-    with ThreadPoolExecutor(max_workers=args.cpu) as executor, tqdm(total=len(files)) as pbar:
+    with ThreadPoolExecutor(max_workers=args.cpu) as executor, tqdm(
+        total=len(files)
+    ) as pbar:
         for d in executor.map(f, files):
             data |= d
             pbar.update()
     write_json(data, output_path)
 
 
-def _do_filter(args,input_path: Path, output_path: Path):
+def _do_filter(args, input_path: Path, output_path: Path):
     data = read_json(input_path)
     filtered = apply_filters(
         data,
@@ -65,7 +67,7 @@ def _do_filter(args,input_path: Path, output_path: Path):
     write_json(filtered, output_path)
 
 
-def _do_cluster(args,input_path: Path, output_path: Path):
+def _do_cluster(args, input_path: Path, output_path: Path):
     only_sequence = getattr(args, "only_sequence", False)
     only_structure = getattr(args, "only_structure", False)
 
@@ -91,7 +93,7 @@ def _do_cluster(args,input_path: Path, output_path: Path):
         write_json(cluster, output_path)
 
 
-def _do_split(args,input_path: Path, output_path: Path):
+def _do_split(args, input_path: Path, output_path: Path):
     split(
         input_path,
         output_path,

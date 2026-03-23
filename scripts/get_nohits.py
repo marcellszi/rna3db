@@ -19,7 +19,9 @@ if __name__ == "__main__":
 
     all_hits = set(tbl.query_name)
     edge_hits = set(tbl.filter_e_value(args.e_value_threshold).query_name)
-    short_chains = {r.header for r in all_records if len(r.sequence) < args.length_threshold}
+    short_chains = {
+        r.header for r in all_records if len(r.sequence) < args.length_threshold
+    }
 
     # chains that were not hit at all
     zero_hits = {r.header for r in all_records} - all_hits

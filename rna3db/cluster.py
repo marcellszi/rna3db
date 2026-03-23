@@ -183,7 +183,10 @@ def cluster_sequences(
         )
 
     data = read_json(input_json_path)
-    records = [fasta.Record(header=k, sequence=v["sequence"]) for k, v in data.items()]
+    records = sorted(
+        (fasta.Record(header=k, sequence=v["sequence"]) for k, v in data.items()),
+        key=lambda r: r.header,
+    )
 
     with tempfile.NamedTemporaryFile() as fasta_f:
         fasta.write(records, fasta_f.name)

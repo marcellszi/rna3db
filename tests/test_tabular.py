@@ -3,7 +3,9 @@ import unittest
 import tempfile
 
 from collections import defaultdict
+from pathlib import Path
 
+from rna3db.parsers import tabular
 from rna3db.parsers.tabular import Table, Hit
 
 TBL_STR = (
@@ -128,3 +130,95 @@ class TestTabularParser(unittest.TestCase):
 
         for k, v in actual_list.items():
             self.assertEqual(self.tbl.__getattribute__(k), v)
+
+
+class TestTableFiltering(unittest.TestCase):
+    # TBL_STR e-values: 0.099 (7lhd_A/mir-4850), 0.18 (7lhd_A/Lysine), 7.2e-14 (7osa_PSIT/tRNA)
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile("w")
+        self._tmp.write(TBL_STR)
+        self._tmp.flush()
+        self.tbl = Table(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.close()
+
+    def test_filter_e_value(self):
+        # cutoff 0.1 keeps 7.2e-14 and 0.099; sorts ascending
+        filtered = self.tbl.filter_e_value(0.1)
+        self.assertEqual(len(filtered), 2)
+        self.assertEqual(filtered.e_value, [7.2e-14, 0.099])
+
+    def test_filter_e_value_removes_all(self):
+        filtered = self.tbl.filter_e_value(1e-30)
+        self.assertEqual(len(filtered), 0)
+
+    def test_filter_e_value_keeps_all(self):
+        filtered = self.tbl.filter_e_value(1.0)
+        self.assertEqual(len(filtered), 3)
+
+    def test_filter_attr_by_set(self):
+        filtered = self.tbl.filter_attr_by_set("query_name", {"7lhd_A"})
+        self.assertEqual(len(filtered), 2)
+        self.assertTrue(all(q == "7lhd_A" for q in filtered.query_name))
+
+    def test_filter_attr_by_set_multiple(self):
+        filtered = self.tbl.filter_attr_by_set("target_name", {"mir-4850", "tRNA"})
+        self.assertEqual(len(filtered), 2)
+
+    def test_filter_attr_by_value(self):
+        filtered = self.tbl.filter_attr_by_value("query_name", "7osa_PSIT")
+        self.assertEqual(len(filtered), 1)
+        self.assertEqual(filtered.hits[0].target_name, "tRNA")
+
+    def test_getitem(self):
+        filtered = self.tbl["7lhd_A"]
+        self.assertEqual(len(filtered), 2)
+        self.assertTrue(all(q == "7lhd_A" for q in filtered.query_name))
+
+    def test_reverse(self):
+        rev = self.tbl.reverse
+        self.assertEqual(len(rev), len(self.tbl))
+        self.assertEqual(rev.hits, self.tbl.hits[::-1])
+
+    def test_reverse_roundtrip(self):
+        self.assertEqual(self.tbl.reverse.reverse.hits, self.tbl.hits)
+
+
+class TestTableInit(unittest.TestCase):
+    def test_init_raises_both_path_and_hits(self):
+        with tempfile.NamedTemporaryFile("w") as f:
+            f.write(TBL_STR)
+            f.flush()
+            with self.assertRaises(ValueError):
+                Table(path=f.name, hits=[])
+
+    def test_init_raises_neither(self):
+        with self.assertRaises(ValueError):
+            Table()
+
+    def test_init_with_empty_hits(self):
+        tbl = Table(hits=[])
+        self.assertEqual(len(tbl), 0)
+
+
+class TestTabularRead(unittest.TestCase):
+    tbls_path = Path(__file__).parent / "test_data" / "tbls"
+
+    def test_read_file(self):
+        with tempfile.NamedTemporaryFile("w") as f:
+            f.write(TBL_STR)
+            f.flush()
+            tbl = tabular.read(f.name)
+        self.assertEqual(len(tbl), 3)
+
+    def test_read_directory(self):
+        # cmscan.tbl has 11 hits, cmscan-nohits.tbl has 8 hits
+        tbl = tabular.read(self.tbls_path)
+        self.assertEqual(len(tbl), 19)
+
+    def test_read_directory_sorted_by_evalue(self):
+        tbl = tabular.read(self.tbls_path)
+        e_values = tbl.e_value
+        self.assertEqual(e_values, sorted(e_values))
