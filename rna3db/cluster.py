@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Sequence
 from pathlib import Path
 
-from rna3db.parsers import tabular, fasta
+from rna3db.parsers import FASTA, Table
 from rna3db.utils import read_json
 
 import subprocess
@@ -183,13 +183,14 @@ def cluster_sequences(
         )
 
     data = read_json(input_json_path)
-    records = sorted(
-        (fasta.Record(header=k, sequence=v["sequence"]) for k, v in data.items()),
-        key=lambda r: r.header,
+    sorted_keys = sorted(data.keys())
+    fasta_data = FASTA(
+        headers=sorted_keys,
+        sequences=[data[k]["sequence"] for k in sorted_keys],
     )
 
     with tempfile.NamedTemporaryFile() as fasta_f:
-        fasta.write(records, fasta_f.name)
+        fasta_data.write(fasta_f.name)
         _run_mmseqs2(
             binary_path=mmseqs2_binary_path,
             fasta_path=fasta_f.name,
@@ -234,7 +235,7 @@ def cluster_structures(
     graph = InfernalGraph()
 
     data = read_json(input_json_path)
-    tbl = tabular.read(tbl_dir)
+    tbl = Table.read(tbl_dir)
     tbl = tbl.filter_attr_by_set("query_name", set(data.keys()))
     tbl = tbl.filter_e_value(e_value_cutoff)
 

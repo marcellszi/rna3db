@@ -5,7 +5,7 @@ import unittest
 from tempfile import NamedTemporaryFile
 from pathlib import Path
 
-from rna3db.parsers import structure
+from rna3db.parsers import Structure
 from rna3db.parsers.structure import Residue, Chain
 
 
@@ -15,7 +15,7 @@ class TestmmCIFWriter(unittest.TestCase):
     test_two_chain_path = Path(__file__).parent / "test_data" / "mmcifs" / "3cgs.cif"
 
     def test_simple_mmcif_read(self):
-        sf = structure.read(self.test_trna_path)
+        sf = Structure.read(self.test_trna_path)
         self.assertEqual(list(sf.chains.keys()), ["A"])
         seq = "GCGGAUUUAGCUCAGUUGGGAGAGCGCCAGACUGAAGAUCUGGAGGUCCUGUGUUCGAUCCACAGAAUUCGCACCA"
         example_chain = Chain("A")
@@ -24,7 +24,7 @@ class TestmmCIFWriter(unittest.TestCase):
         self.assertEqual(sf["A"], example_chain)
 
     def test_simple_mmcif_read_two_chain(self):
-        sf = structure.read(self.test_two_chain_path)
+        sf = Structure.read(self.test_two_chain_path)
         self.assertEqual(list(sf.chains.keys()), ["A", "B"])
         chain_A = Chain("A")
         for i, s in enumerate("GCGCGUAGUAGC"):
@@ -151,35 +151,33 @@ class TestmmCIFWriter(unittest.TestCase):
         self.assertEqual(a, b)
 
     def test_full_io(self):
-        sf_read = structure.read(self.test_trna_path, include_atoms=True)
+        sf_read = Structure.read(self.test_trna_path, include_atoms=True)
         with NamedTemporaryFile() as f:
-            sf_read.write_mmcif_chain(f.name + ".cif", "A")
-            sf_write = structure.read(f.name + ".cif", include_atoms=True)
+            sf_read.write(f.name + ".cif", "A")
+            sf_write = Structure.read(f.name + ".cif", include_atoms=True)
             for auth_id in sf_write.chains.keys():
                 self.assertEqual(sf_read[auth_id], sf_write[auth_id])
 
     def test_full_io_two_chains(self):
-        sf_read = structure.read(self.test_two_chain_path, include_atoms=True)
+        sf_read = Structure.read(self.test_two_chain_path, include_atoms=True)
         with NamedTemporaryFile() as f:
             for chain in sf_read:
-                sf_read.write_mmcif_chain(
-                    f.name + f"_{chain.author_id}.cif", chain.author_id
-                )
-                sf_write = structure.read(
+                sf_read.write(f.name + f"_{chain.author_id}.cif", chain.author_id)
+                sf_write = Structure.read(
                     f.name + f"_{chain.author_id}.cif", include_atoms=True
                 )
                 for auth_id in sf_write.chains.keys():
                     self.assertEqual(sf_read[auth_id], sf_write[auth_id])
 
     def test_backwards_compatibility(self):
-        sf_old = structure.read(self.test_old_path, include_atoms=True)
-        sf_new = structure.read(self.test_trna_path, include_atoms=True)
+        sf_old = Structure.read(self.test_old_path, include_atoms=True)
+        sf_new = Structure.read(self.test_trna_path, include_atoms=True)
         self.assertEqual(sf_old.chains.keys(), sf_new.chains.keys())
         for k in sf_new.chains.keys():
             self.assertEqual(sf_old[k], sf_new[k])
 
     def test_atom_read(self):
-        sf = structure.read(self.test_trna_path, include_atoms=True)
+        sf = Structure.read(self.test_trna_path, include_atoms=True)
         self.assertDictEqual(
             sf["A"][0].atoms,
             {
@@ -215,32 +213,32 @@ class TestStructureFormat(unittest.TestCase):
     test_trna_path = Path(__file__).parent / "test_data" / "mmcifs" / "1ehz.cif"
 
     def test_explicit_mmcif_format(self):
-        sf = structure.read(self.test_trna_path, format="mmcif")
+        sf = Structure.read(self.test_trna_path, format="mmcif")
         self.assertEqual(list(sf.chains.keys()), ["A"])
 
     def test_unknown_extension_defaults_to_mmcif(self):
         """Files with unrecognised extensions should be parsed as mmCIF."""
         with tempfile.NamedTemporaryFile(suffix=".unknown") as f:
             shutil.copy(self.test_trna_path, f.name)
-            sf = structure.read(f.name)
+            sf = Structure.read(f.name)
         self.assertEqual(list(sf.chains.keys()), ["A"])
 
     def test_pdb_extension_raises(self):
         with tempfile.NamedTemporaryFile(suffix=".pdb") as f:
             with self.assertRaises(NotImplementedError):
-                structure.read(f.name)
+                Structure.read(f.name)
 
     def test_explicit_pdb_raises(self):
         with self.assertRaises(NotImplementedError):
-            structure.read(self.test_trna_path, format="pdb")
+            Structure.read(self.test_trna_path, format="pdb")
 
     def test_explicit_pdb_case_insensitive(self):
         """format parameter should be case-insensitive."""
         with self.assertRaises(NotImplementedError):
-            structure.read(self.test_trna_path, format="PDB")
+            Structure.read(self.test_trna_path, format="PDB")
 
         with self.assertRaises(NotImplementedError):
-            structure.read(self.test_trna_path, format="Pdb")
+            Structure.read(self.test_trna_path, format="Pdb")
 
 
 if __name__ == "__main__":

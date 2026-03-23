@@ -2,76 +2,101 @@ import gzip
 import tempfile
 import unittest
 
-from rna3db.parsers import fasta
-from rna3db.parsers.fasta import Record
+from rna3db.parsers import FASTA
 
 
-class TestRecord(unittest.TestCase):
-    def test_fields(self):
-        r = Record("seq1", "ACGU")
-        self.assertEqual(r.header, "seq1")
-        self.assertEqual(r.sequence, "ACGU")
+class TestFASTA(unittest.TestCase):
+    def test_construction(self):
+        f = FASTA(["seq1", "seq2"], ["ACGU", "GGCC"])
+        self.assertEqual(f.headers, ["seq1", "seq2"])
+        self.assertEqual(f.sequences, ["ACGU", "GGCC"])
 
-    def test_namedtuple_unpacking(self):
-        r = Record("h", "ACGU")
-        header, sequence = r
-        self.assertEqual(header, "h")
-        self.assertEqual(sequence, "ACGU")
+    def test_len(self):
+        self.assertEqual(len(FASTA([], [])), 0)
+        self.assertEqual(len(FASTA(["h"], ["ACGU"])), 1)
+
+    def test_getitem(self):
+        f = FASTA(["seq1", "seq2"], ["ACGU", "GGCC"])
+        self.assertEqual(f[0], ("seq1", "ACGU"))
+        self.assertEqual(f[1], ("seq2", "GGCC"))
+
+    def test_iter(self):
+        f = FASTA(["seq1", "seq2"], ["ACGU", "GGCC"])
+        pairs = list(f)
+        self.assertEqual(pairs, [("seq1", "ACGU"), ("seq2", "GGCC")])
+
+    def test_eq(self):
+        a = FASTA(["seq1"], ["ACGU"])
+        b = FASTA(["seq1"], ["ACGU"])
+        c = FASTA(["seq2"], ["ACGU"])
+        self.assertEqual(a, b)
+        self.assertNotEqual(a, c)
+
+    def test_unpack(self):
+        f = FASTA(["seq1", "seq2"], ["ACGU", "GGCC"])
+        headers, sequences = f.unpack()
+        self.assertEqual(headers, ["seq1", "seq2"])
+        self.assertEqual(sequences, ["ACGU", "GGCC"])
+
+    def test_eq_different_type(self):
+        f = FASTA(["seq1"], ["ACGU"])
+        self.assertNotEqual(f, [("seq1", "ACGU")])
 
 
-class TestFastaRead(unittest.TestCase):
+class TestFASTARead(unittest.TestCase):
     def test_simple(self):
         content = ">seq1\nACGU\n>seq2\nGGCC\n"
         with tempfile.NamedTemporaryFile("w", suffix=".fa") as f:
             f.write(content)
             f.flush()
-            records = fasta.read(f.name)
-        self.assertEqual(len(records), 2)
-        self.assertEqual(records[0], Record("seq1", "ACGU"))
-        self.assertEqual(records[1], Record("seq2", "GGCC"))
+            result = FASTA.read(f.name)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.headers, ["seq1", "seq2"])
+        self.assertEqual(result.sequences, ["ACGU", "GGCC"])
 
     def test_multiline_sequence(self):
         content = ">seq1\nACGU\nGGCC\nUUAA\n"
         with tempfile.NamedTemporaryFile("w", suffix=".fa") as f:
             f.write(content)
             f.flush()
-            records = fasta.read(f.name)
-        self.assertEqual(len(records), 1)
-        self.assertEqual(records[0].sequence, "ACGUGGCCUUAA")
+            result = FASTA.read(f.name)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result.sequences[0], "ACGUGGCCUUAA")
 
     def test_comments_skipped(self):
         content = "# comment\n>seq1\nACGU\n# another\n>seq2\nGGCC\n"
         with tempfile.NamedTemporaryFile("w", suffix=".fa") as f:
             f.write(content)
             f.flush()
-            records = fasta.read(f.name)
-        self.assertEqual(len(records), 2)
-        self.assertEqual(records[0].sequence, "ACGU")
+            result = FASTA.read(f.name)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.sequences[0], "ACGU")
 
     def test_blank_lines_skipped(self):
         content = ">seq1\nACGU\n\n\n>seq2\nGGCC\n"
         with tempfile.NamedTemporaryFile("w", suffix=".fa") as f:
             f.write(content)
             f.flush()
-            records = fasta.read(f.name)
-        self.assertEqual(len(records), 2)
-        self.assertEqual(records[0].sequence, "ACGU")
-        self.assertEqual(records[1].sequence, "GGCC")
+            result = FASTA.read(f.name)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.sequences[0], "ACGU")
+        self.assertEqual(result.sequences[1], "GGCC")
 
     def test_empty_file(self):
         with tempfile.NamedTemporaryFile("w", suffix=".fa") as f:
-            records = fasta.read(f.name)
-        self.assertEqual(records, [])
+            result = FASTA.read(f.name)
+        self.assertEqual(len(result), 0)
+        self.assertEqual(result, FASTA([], []))
 
     def test_gzip(self):
         content = b">seq1\nACGU\n>seq2\nGGCC\n"
         with tempfile.NamedTemporaryFile(suffix=".fa.gz") as f:
             with gzip.open(f.name, "wb") as gz:
                 gz.write(content)
-            records = fasta.read(f.name)
-        self.assertEqual(len(records), 2)
-        self.assertEqual(records[0], Record("seq1", "ACGU"))
-        self.assertEqual(records[1], Record("seq2", "GGCC"))
+            result = FASTA.read(f.name)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.headers, ["seq1", "seq2"])
+        self.assertEqual(result.sequences, ["ACGU", "GGCC"])
 
     def test_force_gzip(self):
         """Non-.gz extension still read as gzip when force_gzip=True."""
@@ -79,34 +104,36 @@ class TestFastaRead(unittest.TestCase):
         with tempfile.NamedTemporaryFile(suffix=".fa") as f:
             with gzip.open(f.name, "wb") as gz:
                 gz.write(content)
-            records = fasta.read(f.name, force_gzip=True)
-        self.assertEqual(len(records), 1)
-        self.assertEqual(records[0], Record("seq1", "ACGU"))
+            result = FASTA.read(f.name, force_gzip=True)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result.headers[0], "seq1")
+        self.assertEqual(result.sequences[0], "ACGU")
 
 
-class TestFastaWrite(unittest.TestCase):
+class TestFASTAWrite(unittest.TestCase):
     def test_write(self):
-        records = [Record("seq1", "ACGU"), Record("seq2", "GGCC")]
-        with tempfile.NamedTemporaryFile(suffix=".fa") as f:
-            fasta.write(records, f.name)
-            with open(f.name) as rf:
+        f = FASTA(["seq1", "seq2"], ["ACGU", "GGCC"])
+        with tempfile.NamedTemporaryFile(suffix=".fa") as tmp:
+            f.write(tmp.name)
+            with open(tmp.name) as rf:
                 content = rf.read()
         self.assertEqual(content, ">seq1\nACGU\n>seq2\nGGCC\n")
 
     def test_roundtrip(self):
-        records = [
-            Record("1ehz_A", "GCGGAUUUAGCUCAGUUGGGAGAGCGCCAGACUGAAGAUC"),
-            Record("3cgs_A", "GCGCGUAGUAGC"),
-        ]
-        with tempfile.NamedTemporaryFile(suffix=".fa") as f:
-            fasta.write(records, f.name)
-            result = fasta.read(f.name)
-        self.assertEqual(records, result)
+        original = FASTA(
+            ["1ehz_A", "3cgs_A"],
+            ["GCGGAUUUAGCUCAGUUGGGAGAGCGCCAGACUGAAGAUC", "GCGCGUAGUAGC"],
+        )
+        with tempfile.NamedTemporaryFile(suffix=".fa") as tmp:
+            original.write(tmp.name)
+            result = FASTA.read(tmp.name)
+        self.assertEqual(original, result)
 
     def test_write_empty(self):
-        with tempfile.NamedTemporaryFile(suffix=".fa") as f:
-            fasta.write([], f.name)
-            with open(f.name) as rf:
+        f = FASTA([], [])
+        with tempfile.NamedTemporaryFile(suffix=".fa") as tmp:
+            f.write(tmp.name)
+            with open(tmp.name) as rf:
                 content = rf.read()
         self.assertEqual(content, "")
 

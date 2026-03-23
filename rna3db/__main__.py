@@ -4,7 +4,7 @@ from pathlib import Path
 from tqdm import tqdm
 import argparse
 
-from rna3db.parsers.structure import Structure
+from rna3db.parsers import Structure
 from rna3db.filter import apply_filters
 from rna3db.cluster import cluster_sequences, cluster_structures
 from rna3db.split import split
@@ -16,7 +16,7 @@ def _read_as_dict(
 ) -> dict:
     d = {}
     try:
-        sf = Structure(path, nmr_resolution, include_atoms)
+        sf = Structure.read(path, nmr_resolution, include_atoms)
         for chain in sf:
             chain_id = f"{sf.pdb_id}_{chain.author_id}"
             d[chain_id] = {

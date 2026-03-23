@@ -5,8 +5,8 @@ import tempfile
 from collections import defaultdict
 from pathlib import Path
 
-from rna3db.parsers import tabular
-from rna3db.parsers.tabular import Table, Hit
+from rna3db.parsers import Table
+from rna3db.parsers.tabular import Hit
 
 TBL_STR = (
     "#target name         accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target\n"
@@ -210,15 +210,15 @@ class TestTabularRead(unittest.TestCase):
         with tempfile.NamedTemporaryFile("w") as f:
             f.write(TBL_STR)
             f.flush()
-            tbl = tabular.read(f.name)
+            tbl = Table.read(f.name)
         self.assertEqual(len(tbl), 3)
 
     def test_read_directory(self):
         # cmscan.tbl has 11 hits, cmscan-nohits.tbl has 8 hits
-        tbl = tabular.read(self.tbls_path)
+        tbl = Table.read(self.tbls_path)
         self.assertEqual(len(tbl), 19)
 
     def test_read_directory_sorted_by_evalue(self):
-        tbl = tabular.read(self.tbls_path)
+        tbl = Table.read(self.tbls_path)
         e_values = tbl.e_value
         self.assertEqual(e_values, sorted(e_values))

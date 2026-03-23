@@ -28,24 +28,6 @@ _TBL_ROW_TYPES = {
 Hit = namedtuple("Hit", list(_TBL_ROW_TYPES.keys()))
 
 
-def read(path: Path) -> "Table":
-    """Read a `.tbl` file or a directory of `.tbl` files.
-
-    Args:
-        path (Path): Path to a `.tbl` file or a directory containing `.tbl` files.
-
-    Returns:
-        Table: Object containing all hits, sorted by E-value.
-    """
-    path = Path(path)
-    if path.is_dir():
-        hits = []
-        for p in path.glob("*.tbl"):
-            hits.extend(Table(p).hits)
-        return Table(hits=sorted(hits, key=lambda x: x.e_value))
-    return Table(path)
-
-
 class Table:
     def __init__(self, path: Path = None, hits: Sequence[Hit] = None):
         """
@@ -62,6 +44,25 @@ class Table:
             self.hits = self._parse_tbl(path)
         if hits is not None:
             self.hits = hits
+
+    @classmethod
+    def read(cls, path: Path) -> "Table":
+        """Read a ``.tbl`` file or a directory of ``.tbl`` files.
+
+        Args:
+            path (Path): Path to a ``.tbl`` file or a directory containing
+                ``.tbl`` files.
+
+        Returns:
+            Table: Object containing all hits, sorted by E-value.
+        """
+        path = Path(path)
+        if path.is_dir():
+            hits = []
+            for p in path.glob("*.tbl"):
+                hits.extend(cls(p).hits)
+            return cls(hits=sorted(hits, key=lambda x: x.e_value))
+        return cls(path)
 
     def __getitem__(self, query: str) -> Table:
         return self.filter_attr_by_value("query_name", query)

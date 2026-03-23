@@ -9,29 +9,6 @@ from rna3db.ccd.chem_comp import load as load_chem_comps
 import dataclasses
 
 
-def read(
-    path: Path,
-    nmr_resolution: float = None,
-    include_atoms: bool = False,
-    format: str = None,
-):
-    """Top-level API that parses a structure file as a Structure.
-
-    Args:
-        path (Path): Path to structure file to parse.
-        nmr_resolution (float, optional): Resolution to assign to NMR structures.
-            Default behaviour is to treat NMR resolution as float('inf').
-        include_atoms (bool, optional): If True, atom coordinates are parsed and
-            stored for each Residue. Default is False.
-        format (str, optional): File format, one of ``"mmcif"`` or ``"pdb"``. If
-            None (default), inferred from file extension; falls back to mmCIF.
-
-    Returns:
-        Structure: object containing data of parsed file
-    """
-    return Structure(path, nmr_resolution, include_atoms, format=format)
-
-
 class Residue:
     """Data class wrapping individual residues."""
 
@@ -241,6 +218,30 @@ class Structure:
         self.chains = parser.chains
         self.auth_asym_to_label_asym = parser.auth_asym_to_label_asym
 
+    @classmethod
+    def read(
+        cls,
+        path: Path,
+        nmr_resolution: float = None,
+        include_atoms: bool = False,
+        format: str = None,
+    ) -> "Structure":
+        """Parse a structure file.
+
+        Args:
+            path (Path): Path to structure file to parse.
+            nmr_resolution (float, optional): Resolution to assign to NMR structures.
+                Default behaviour is to treat NMR resolution as float('inf').
+            include_atoms (bool, optional): If True, atom coordinates are parsed and
+                stored for each Residue. Default is False.
+            format (str, optional): File format, one of ``"mmcif"`` or ``"pdb"``. If
+                None (default), inferred from file extension; falls back to mmCIF.
+
+        Returns:
+            Structure: Parsed structure.
+        """
+        return cls(path, nmr_resolution, include_atoms, format=format)
+
     def __getitem__(self, idx: str) -> Chain:
         return self.chains[idx]
 
@@ -275,7 +276,7 @@ class Structure:
 
         return s
 
-    def write_mmcif_chain(self, output_path: Path, author_id: str):
+    def write(self, output_path: Path, author_id: str):
         """Write a single chain to a minimal mmCIF file.
 
         Args:
@@ -284,7 +285,7 @@ class Structure:
 
         Raises:
             ValueError: If no atom coordinates are available for the chain.
-                Ensure the file was parsed with ``include_atoms=True``.
+                Ensure the file was read with ``include_atoms=True``.
         """
         if not self[author_id].has_atoms:
             raise ValueError(

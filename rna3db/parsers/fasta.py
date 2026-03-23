@@ -1,58 +1,94 @@
 from pathlib import Path
-from typing import NamedTuple
 
 
-class Record(NamedTuple):
-    header: str
-    sequence: str
+class FASTA:
+    """Parsed FASTA file storing parallel lists of headers and sequences."""
 
+    def __init__(self, headers: list[str], sequences: list[str]):
+        """
+        Args:
+            headers (list[str]): Sequence identifiers (without the ``>`` prefix).
+            sequences (list[str]): Corresponding sequences.
+        """
+        self.headers = list(headers)
+        self.sequences = list(sequences)
 
-def read(path: Path, force_gzip: bool = False) -> list[Record]:
-    """Parse a Record file.
+    def __len__(self) -> int:
+        return len(self.headers)
 
-    Supports multi-line sequences.
+    def __iter__(self):
+        return zip(self.headers, self.sequences)
 
-    Args:
-        path (Path): Path to input Record file.
-        force_gzip (bool, optional): If True, will attempt to read the file as a
-            gzip file.
+    def __getitem__(self, idx) -> tuple[str, str]:
+        return (self.headers[idx], self.sequences[idx])
 
-    Returns:
-        list[Record]: List of Record records.
-    """
-    if Path(path).suffix == ".gz" or force_gzip:
-        import gzip
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, FASTA):
+            return NotImplemented
+        return self.headers == other.headers and self.sequences == other.sequences
 
-        reader = gzip.open(path, "rt")
-    else:
-        reader = open(path, "r")
-    with reader as f:
-        records = []
+    def unpack(self) -> tuple[list[str], list[str]]:
+        """Return headers and sequences as a tuple of two lists.
+
+        Example:
+            >>> headers, sequences = FASTA.read("seqs.fa").unpack()
+        """
+        return self.headers, self.sequences
+
+    def __repr__(self) -> str:
+        return f"FASTA(n={len(self)})"
+
+    @classmethod
+    def read(cls, path: Path, force_gzip: bool = False) -> "FASTA":
+        """Parse a FASTA file.
+
+        Supports multi-line sequences.
+
+        Args:
+            path (Path): Path to input FASTA file.
+            force_gzip (bool, optional): If True, will attempt to read the file as a
+                gzip file.
+
+        Returns:
+            FASTA: Parsed FASTA file.
+        """
+        if Path(path).suffix == ".gz" or force_gzip:
+            import gzip
+
+            reader = gzip.open(path, "rt")
+        else:
+            reader = open(path, "r")
+
+        headers = []
+        sequences = []
         current_header = None
         current_sequence = ""
-        for line in f:
-            line = line.strip()
-            if line.startswith(">"):
-                if current_header is not None:
-                    records.append(Record(current_header, current_sequence))
-                current_header = line[1:]
-                current_sequence = ""
-            elif line.startswith("#") or not line:
-                continue
-            else:
-                current_sequence += line
-        if current_header is not None:
-            records.append(Record(current_header, current_sequence))
-    return records
 
+        with reader as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith(">"):
+                    if current_header is not None:
+                        headers.append(current_header)
+                        sequences.append(current_sequence)
+                    current_header = line[1:]
+                    current_sequence = ""
+                elif line.startswith("#") or not line:
+                    continue
+                else:
+                    current_sequence += line
+            if current_header is not None:
+                headers.append(current_header)
+                sequences.append(current_sequence)
 
-def write(records: Record[Record], output_path: Path):
-    """Write Record records to a file.
+        return cls(headers, sequences)
 
-    Args:
-        records (Record[Record]): Record records to write.
-        output_path (Path): Path to write Record file to.
-    """
-    with open(output_path, "w") as f:
-        for record in records:
-            f.write(f">{record.header}\n{record.sequence}\n")
+    def write(self, path: Path):
+        """Write FASTA records to a file.
+
+        Args:
+            path (Path): Path to write FASTA file to.
+        """
+        with open(path, "w") as f:
+            for header, sequence in zip(self.headers, self.sequences):
+                f.write(f">{header}\n{sequence}\n")
