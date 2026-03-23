@@ -18,6 +18,10 @@ def read(
 
     Args:
         path (Path): path to mmCIF file to parse
+        nmr_resolution (float, optional): resolution to assign to NMR structures.
+            Default behaviour is to treat NMR resolution as float('inf').
+        include_atoms (bool, optional): if True, atom coordinates are parsed and
+            stored for each Residue. Default is False.
 
     Returns:
         StructureFile: object containing data of parsed file
@@ -35,12 +39,20 @@ class Residue:
         index: int,
         atoms: dict = None,
     ):
+        """
+        Args:
+            three_letter_code (str): Three-letter CCD residue code (e.g. ``"GTP"``).
+            one_letter_code (str): Single-letter code (e.g. ``"G"``).
+            index (int): Zero-based sequence index.
+            atoms (dict, optional): Mapping of atom name to (x, y, z) coordinates.
+        """
         self.three_letter_code = three_letter_code
         self.one_letter_code = one_letter_code
         self.index = index
-        # NOTE: we need to handle dict like this, cannot use `atoms: dict = {}` in method definition
-        # See important warning: https://docs.python.org/3/tutorial/controlflow.html#default-argument-values
-        # (the default value is evaluated only once, which causes issues with mutable dictionaries)
+        # NOTE: we need to handle dict like this, cannot use `atoms: dict = {}`
+        # in the method definition. See important warning:
+        # https://docs.python.org/3/tutorial/controlflow.html#default-argument-values
+        # (the default value is evaluated only once, causing issues with mutable dicts)
         self.atoms = atoms if atoms else {}
 
     @property
@@ -71,6 +83,11 @@ class Chain:
     """Data class wrapping chains. Contains a list of Residues."""
 
     def __init__(self, author_id: str = None):
+        """
+        Args:
+            author_id (str, optional): Author chain identifier as recorded in
+                the mmCIF file.
+        """
         self.author_id = author_id
         self.residues = []
 
@@ -105,14 +122,16 @@ class Chain:
     def add_residue(self, res: Residue):
         """Add a residue to the chain.
 
-        NOTE: Residues indices should be added in increasing order.
-              If two conecutive residues are added with the same index, we
-              ignore the second one. See 4x4t_G for the motivation.
-              We also infer missing residues as `N`s if there is a gap in the
-              insertion.
+        Note:
+            Residues must be added in increasing index order. Duplicate indices
+            are silently ignored (see 4x4t_G for motivation). Gaps in the
+            sequence are filled with ``N`` residues.
 
         Args:
             res (Residue): Residue to add to the chain.
+
+        Raises:
+            ValueError: If ``res`` has an index less than the last added residue.
         """
         if len(self) == 0 or self.residues[-1].index == res.index - 1:
             self.residues.append(res)
@@ -163,22 +182,26 @@ class StructureFile:
         nmr_resolution: float = None,
         include_atoms: bool = False,
     ):
-        """A StructureFile encapsulates a parsed mmCIF or PDB file and contains convenient high-level APIs for common
-        tasks.
+        """Encapsulates a parsed mmCIF/PDBx file with high-level access to chains.
 
-        NOTE: File type is inferred from the extension. File extensions are not case-sensitive.
-            Valid types: mmCIF (`.cif`, `.mmcif`). Legacy PDB format is not currently supported.
+        Note:
+            File type is inferred from the extension (case-insensitive).
+            Valid extensions: ``.cif``, ``.mmcif``. Legacy PDB format is not
+            currently supported.
 
         Args:
-            path (:Path:): The path to the file.
+            path (Path): Path to the mmCIF file.
+            nmr_resolution (float, optional): Resolution to assign to NMR structures.
+                Default behaviour is to treat NMR resolution as float('inf').
+            include_atoms (bool, optional): If True, atom coordinates are parsed and
+                stored for each Residue. Default is False.
 
         Attributes:
-            path (Path): The path of the input file.
             pdb_id (str): The PDB ID as read from the file.
-            release_date (str): Date given as a `str` in ISO 8601 format.
+            release_date (str): Date in ISO 8601 format.
             resolution (float): Resolution in ångströms.
             structure_method (str): Method used to resolve the structure.
-            chains (Mapping[str, :Chain:])
+            chains (Mapping[str, Chain]): Mapping of author chain ID to Chain.
         """
         # determine which parser to use
         path = Path(path)
@@ -212,7 +235,8 @@ class StructureFile:
     def __repr__(self):
         return (
             f"StructureFile(pdb_id={self.pdb_id}, chains={self.chains.keys()}, "
-            f"resolution={self.resolution}, release_date={self.release_date}, structure_method={self.structure_method})"
+            f"resolution={self.resolution}, release_date={self.release_date}, "
+            f"structure_method={self.structure_method})"
         )
 
     @staticmethod
@@ -234,10 +258,21 @@ class StructureFile:
 
         return s
 
-    def write_mmcif_chain(self, output_path, author_id):
+    def write_mmcif_chain(self, output_path: Path, author_id: str):
+        """Write a single chain to a minimal mmCIF file.
+
+        Args:
+            output_path (Path): Path to write the mmCIF file to.
+            author_id (str): Author chain identifier to write.
+
+        Raises:
+            ValueError: If no atom coordinates are available for the chain.
+                Ensure the file was parsed with ``include_atoms=True``.
+        """
         if not self[author_id].has_atoms:
             raise ValueError(
-                f"Did not find any atoms for chain {author_id}. Did you set `include_atoms=True`?"
+                f"Did not find any atoms for chain {author_id}. "
+                f"Did you set `include_atoms=True`?"
             )
         # extract needed info
         entity_poly_seq_data = []
@@ -248,27 +283,27 @@ class StructureFile:
                 x, y, z = atom_coords
                 atom_site_data.append(
                     (
-                        "ATOM",
-                        idx + 1,
-                        atom_name[0],
-                        atom_name,
-                        ".",
-                        res.code,
-                        author_id,
-                        "?",
-                        i + 1,
-                        "?",
-                        x,
-                        y,
-                        z,
-                        1.0,
-                        0.0,
-                        "?",
-                        i + 1,
-                        res.code,
-                        author_id,
-                        atom_name,
-                        1,
+                        "ATOM",       # group_PDB
+                        idx + 1,      # id
+                        atom_name[0], # type_symbol (element)
+                        atom_name,    # label_atom_id
+                        ".",          # label_alt_id
+                        res.code,     # label_comp_id
+                        author_id,    # label_asym_id
+                        "?",          # label_entity_id
+                        i + 1,        # label_seq_id
+                        "?",          # pdbx_PDB_ins_code
+                        x,            # Cartn_x
+                        y,            # Cartn_y
+                        z,            # Cartn_z
+                        1.0,          # occupancy
+                        0.0,          # B_iso_or_equiv
+                        "?",          # pdbx_formal_charge
+                        i + 1,        # auth_seq_id
+                        res.code,     # auth_comp_id
+                        author_id,    # auth_asym_id
+                        atom_name,    # auth_atom_id
+                        1,            # pdbx_PDB_model_num
                     )
                 )
 
@@ -279,7 +314,8 @@ class StructureFile:
             f"data_{self.pdb_id}_{author_id}\n"
             f"_entry.id {self.pdb_id}_{author_id}\n"
             f"_pdbx_database_status.recvd_initial_deposition_date {self.release_date}\n"
-            f"_pdbx_audit_revision_history.revision_date {self.release_date}\n"  # this + above for better compatibility
+            # some readers prefer one field over the other, so we write both
+            f"_pdbx_audit_revision_history.revision_date {self.release_date}\n"
             f"_exptl.method '{self.structure_method.upper()}'\n"
             f"_reflns.d_resolution_high {self.resolution}\n"
             f"_entity_poly.pdbx_seq_one_letter_code_can {self[author_id].sequence}\n"
@@ -376,6 +412,8 @@ class StructureFile:
 
 
 class mmCIFParser:
+    """Low-level parser for mmCIF/PDBx files. Wraps BioPython's MMCIF2Dict."""
+
     def __init__(
         self,
         path: Path,
@@ -383,6 +421,14 @@ class mmCIFParser:
         nmr_resolution: float = None,
         include_atoms: bool = False,
     ):
+        """
+        Args:
+            path (Path): Path to the mmCIF file.
+            modification_handler (ModificationHandler): Handler for converting
+                three-letter residue codes to one-letter codes.
+            nmr_resolution (float, optional): Resolution to assign to NMR structures.
+            include_atoms (bool, optional): Whether to parse atom coordinates.
+        """
         self.path = path
         self.nmr_resolution = nmr_resolution
         self.include_atoms = include_atoms
@@ -525,8 +571,8 @@ class mmCIFParser:
                 for author_id in id_map[entity_id]:
                     chain_type[author_id] = poly_type
         else:
-            # if we don't have _entity_poly, we fall back to chem_comp type for each mon_id
-            # this is for backwards compatibility with older RNA3BD version release mmCIFs
+            # if we don't have _entity_poly, fall back to chem_comp type for
+            # each mon_id (backwards compatibility with older RNA3DB release mmCIFs)
             chem_comp_type = {
                 mon_id: comp_type
                 for mon_id, comp_type in zip(
@@ -591,9 +637,13 @@ class mmCIFParser:
                     site.three_letter_code
                     != chains[site.author_chain_id][seq_idx].three_letter_code
                 ):
+                    expected = chains[site.author_chain_id][seq_idx].three_letter_code
                     print(
-                        f"WARNING: found a mismatch in {self.pdb_id}_{site.author_chain_id} ({site.entity_id}) at position {seq_idx}, "
-                        f"(entity_poly_seq: {chains[site.author_chain_id][seq_idx].three_letter_code} atom_site: {site.three_letter_code})"
+                        f"WARNING: found a mismatch in "
+                        f"{self.pdb_id}_{site.author_chain_id} "
+                        f"({site.entity_id}) at position {seq_idx} "
+                        f"(entity_poly_seq: {expected}, "
+                        f"atom_site: {site.three_letter_code})"
                     )
                     continue
 

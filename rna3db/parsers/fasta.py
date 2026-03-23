@@ -10,10 +10,10 @@ def read(path, force_gzip=False):
     Args:
         path (Path): Path to input FASTA file.
         force_gzip (bool, optional): If True, will attempt to read the file as a
-        gzip file.
+            gzip file.
 
     Returns:
-
+        tuple: A pair (descriptions, sequences) where each is a list of strings.
     """
     if Path(path).suffix == ".gz" or force_gzip:
         import gzip

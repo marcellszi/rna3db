@@ -47,6 +47,14 @@ class TabularOutput:
     Hit = namedtuple("Hit", list(TBL_ROW_TYPES.keys()))
 
     def __init__(self, path: Path = None, hits: Sequence[Hit] = None):
+        """
+        Args:
+            path (Path, optional): Path to a single ``.tbl`` file to parse.
+            hits (Sequence[Hit], optional): Pre-parsed list of Hit namedtuples.
+
+        Raises:
+            ValueError: If both or neither of ``path`` and ``hits`` are provided.
+        """
         if (path is None) == (hits is None):
             raise ValueError("Invalid values for path and/or hits.")
         if path is not None:
@@ -97,14 +105,19 @@ class TabularOutput:
 
     @property
     def reverse(self):
+        """Return a TabularOutput with hits in reverse order."""
         return TabularOutput(hits=self.hits[::-1])
 
     @property
     def top_hits(self):
-        """
-        Get the top hits (i.e. lowest E-value) for each query in the table.
-        Note: only the first hit is kept if there are more than one hits with
-        the same E-value. This often happens with E-value == 0.0, for example.
+        """Get the top hit (lowest E-value) for each query in the table.
+
+        Note:
+            If multiple hits share the same E-value, only the first encountered
+            is kept. This commonly occurs when E-value == 0.0.
+
+        Returns:
+            TabularOutput: One hit per query, unsorted.
         """
         # this is ugly, but O(n)
         th = {}
@@ -117,8 +130,13 @@ class TabularOutput:
         return TabularOutput(hits=list(th.values()))
 
     def filter_e_value(self, cutoff: float) -> TabularOutput:
-        """
-        Filter the table by E-value <= cutoff.
+        """Filter hits to those with E-value <= cutoff.
+
+        Args:
+            cutoff (float): Maximum E-value to retain.
+
+        Returns:
+            TabularOutput: Filtered hits, sorted by E-value.
         """
         hits = []
         for hit in self.hits:
@@ -127,40 +145,43 @@ class TabularOutput:
         return TabularOutput(hits=sorted(hits, key=lambda x: x.e_value))
 
     def filter_attr_by_set(self, attr: str, filter_set: Sequence[str]) -> TabularOutput:
-        """
-        Filter table by some list of an attribute. Often useful for only
-        keeping certain target_accessions, for example.
+        """Filter hits to those whose attribute value is in a given set.
+
         Args:
-            attr:
-                The attribute to filter by. Must be one of
-                TabularOutput.TBL_ROW_TYPES.
-            filter_set:
-                Set (or any object that implements __contains__) to filter by.
-        Example:
+            attr (str): The hit attribute to filter by. Must be a key of
+                ``TabularOutput.TBL_ROW_TYPES``.
+            filter_set (Sequence): Any object supporting ``__contains__`` to filter by.
+
+        Returns:
+            TabularOutput: Filtered hits, sorted by E-value.
+
+        Examples:
             >>> print(tbl.target_name)
             ['5S_rRNA', 'tRNA5', 'tRNA5', 'Cobalamin']
-            >>> print(tbl.filter_attr_by_set('target_name',
-                                             ['5S_rRNA', 'tRNA5']).target_name)
+            >>> result = tbl.filter_attr_by_set('target_name', ['5S_rRNA', 'tRNA5'])
+            >>> print(result.target_name)
             ['5S_rRNA', 'tRNA5', 'tRNA5']
         """
         hits = [hit for hit in self.hits if getattr(hit, attr) in filter_set]
         return TabularOutput(hits=sorted(hits, key=lambda x: x.e_value))
 
     def filter_attr_by_value(self, attr: str, val) -> TabularOutput:
-        """
-        Filter table by attribute matching a value.
-        Alias for filter_attr_by_set(attr, [val]).
+        """Filter hits to those whose attribute matches a single value.
+
+        Alias for ``filter_attr_by_set(attr, [val])``.
+
         Args:
-            attr:
-                The attribute to filter by. Must be one of
-                TabularOutput.TBL_ROW_TYPES.
-            val:
-                Value to filter by
-        Example:
+            attr (str): The hit attribute to filter by. Must be a key of
+                ``TabularOutput.TBL_ROW_TYPES``.
+            val: Value to filter by.
+
+        Returns:
+            TabularOutput: Filtered hits, sorted by E-value.
+
+        Examples:
             >>> print(tbl.target_name)
             ['5S_rRNA', 'tRNA5', 'tRNA5', 'Cobalamin']
-            >>> print(tbl.filter_attr_by_value('target_name',
-                                               '5S_rRNA').target_name)
+            >>> print(tbl.filter_attr_by_value('target_name', '5S_rRNA').target_name)
             ['5S_rRNA']
         """
         return self.filter_attr_by_set(attr, [val])
