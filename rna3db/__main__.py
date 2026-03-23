@@ -1,4 +1,4 @@
-from multiprocessing import Pool
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
 from tqdm import tqdm
@@ -37,7 +37,7 @@ def _read_as_dict(
     return d
 
 
-def _do_parse(args,input_path: Path, output_path: Path):
+def _do_parse(args, input_path: Path, output_path: Path):
     files = list(input_path.glob("*.cif"))
     data = {}
     f = partial(
@@ -45,8 +45,8 @@ def _do_parse(args,input_path: Path, output_path: Path):
         nmr_resolution=args.nmr_resolution,
         include_atoms=args.include_atoms,
     )
-    with Pool(processes=args.cpu) as p, tqdm(total=len(files)) as pbar:
-        for d in p.imap_unordered(f, files):
+    with ThreadPoolExecutor(max_workers=args.cpu) as executor, tqdm(total=len(files)) as pbar:
+        for d in executor.map(f, files):
             data |= d
             pbar.update()
     write_json(data, output_path)

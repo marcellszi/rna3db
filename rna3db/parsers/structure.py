@@ -239,6 +239,7 @@ class Structure:
         self.resolution = parser.resolution
         self.structure_method = parser.structure_method
         self.chains = parser.chains
+        self.auth_asym_to_label_asym = parser.auth_asym_to_label_asym
 
     def __getitem__(self, idx: str) -> Chain:
         return self.chains[idx]
@@ -551,12 +552,14 @@ class mmCIFParser:
         # NOTE: these are not unique, so there is a set of author_ids for each
         #       entity_id
         id_map = defaultdict(set)
+        self.auth_asym_to_label_asym = defaultdict(set)
         for author_chain_id, mmcif_chain_id in zip(
             self.parsed_info["_atom_site.auth_asym_id"],
             self.parsed_info["_atom_site.label_asym_id"],
         ):
             k = mmcif_chain_to_entity_id[mmcif_chain_id]
             id_map[k].add(author_chain_id)
+            self.auth_asym_to_label_asym[author_chain_id].add(mmcif_chain_id)
 
         # parse full chains from "seqres"
         chains_full = defaultdict(Chain)
