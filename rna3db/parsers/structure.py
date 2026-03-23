@@ -13,20 +13,23 @@ def read(
     path: Path,
     nmr_resolution: float = None,
     include_atoms: bool = False,
+    format: str = None,
 ):
-    """Top-level API that parses an mmCIF/PDBx file as a StructureFile.
+    """Top-level API that parses a structure file as a Structure.
 
     Args:
-        path (Path): path to mmCIF file to parse
-        nmr_resolution (float, optional): resolution to assign to NMR structures.
+        path (Path): Path to structure file to parse.
+        nmr_resolution (float, optional): Resolution to assign to NMR structures.
             Default behaviour is to treat NMR resolution as float('inf').
-        include_atoms (bool, optional): if True, atom coordinates are parsed and
+        include_atoms (bool, optional): If True, atom coordinates are parsed and
             stored for each Residue. Default is False.
+        format (str, optional): File format, one of ``"mmcif"`` or ``"pdb"``. If
+            None (default), inferred from file extension; falls back to mmCIF.
 
     Returns:
-        StructureFile: object containing data of parsed file
+        Structure: object containing data of parsed file
     """
-    return StructureFile(path, nmr_resolution, include_atoms)
+    return Structure(path, nmr_resolution, include_atoms, format=format)
 
 
 class Residue:
@@ -176,26 +179,30 @@ class Chain:
         return S
 
 
-class StructureFile:
+class Structure:
     def __init__(
         self,
         path: Path,
         nmr_resolution: float = None,
         include_atoms: bool = False,
+        format: str = None,
     ):
-        """Encapsulates a parsed mmCIF/PDBx file with high-level access to chains.
+        """Encapsulates a parsed structure file with high-level access to chains.
 
         Note:
-            File type is inferred from the extension (case-insensitive).
-            Valid extensions: ``.cif``, ``.mmcif``. Legacy PDB format is not
-            currently supported.
+            File format is inferred from the extension (case-insensitive) when
+            ``format`` is not provided. Recognised extensions: ``.cif``,
+            ``.mmcif``, ``.pdb``. Unknown extensions default to mmCIF. PDB
+            format is not currently supported.
 
         Args:
-            path (Path): Path to the mmCIF file.
+            path (Path): Path to the structure file.
             nmr_resolution (float, optional): Resolution to assign to NMR structures.
                 Default behaviour is to treat NMR resolution as float('inf').
             include_atoms (bool, optional): If True, atom coordinates are parsed and
                 stored for each Residue. Default is False.
+            format (str, optional): File format, one of ``"mmcif"`` or ``"pdb"``. If
+                None (default), inferred from file extension; falls back to mmCIF.
 
         Attributes:
             pdb_id (str): The PDB ID as read from the file.
@@ -206,14 +213,20 @@ class StructureFile:
         """
         # determine which parser to use
         path = Path(path)
-        if path.suffix.lower() in [".cif", ".mmcif"]:
-            file_parser = mmCIFParser
+        if format is not None:
+            fmt = format.lower()
+        elif path.suffix.lower() in [".cif", ".mmcif"]:
+            fmt = "mmcif"
         elif path.suffix.lower() == ".pdb":
-            raise NotImplementedError(
-                "Unable to parse PDB files. Please use PDBx/mmCIF."
-            )
+            fmt = "pdb"
         else:
-            raise ValueError(f"The extension `{path.suffix.lower()}` is not supported.")
+            fmt = "mmcif"  # default to mmCIF for unrecognised extensions
+
+        if fmt == "pdb":
+            raise NotImplementedError(
+                "PDB format is not currently supported. Please use PDBx/mmCIF."
+            )
+        file_parser = mmCIFParser
 
         modification_handler = ModificationHandler()
 
@@ -235,7 +248,7 @@ class StructureFile:
 
     def __repr__(self) -> str:
         return (
-            f"StructureFile(pdb_id={self.pdb_id}, chains={self.chains.keys()}, "
+            f"Structure(pdb_id={self.pdb_id}, chains={self.chains.keys()}, "
             f"resolution={self.resolution}, release_date={self.release_date}, "
             f"structure_method={self.structure_method})"
         )
@@ -325,7 +338,7 @@ class StructureFile:
             f"_reflns.d_resolution_high {self.resolution}\n"
             f"_entity_poly.pdbx_seq_one_letter_code_can {self[author_id].sequence}\n"
         )
-        struct_asym_str = StructureFile._gen_mmcif_loop_str(
+        struct_asym_str = Structure._gen_mmcif_loop_str(
             "struct_asym",
             [
                 "id",
@@ -336,7 +349,7 @@ class StructureFile:
             ],
             [(author_id, "N", "N", 1, "?")],
         )
-        chem_comp_str = StructureFile._gen_mmcif_loop_str(
+        chem_comp_str = Structure._gen_mmcif_loop_str(
             "chem_comp",
             [
                 "id",
@@ -359,7 +372,7 @@ class StructureFile:
                 for comp in load_chem_comps()
             ],
         )
-        entity_poly = StructureFile._gen_mmcif_loop_str(
+        entity_poly = Structure._gen_mmcif_loop_str(
             "entity_poly",
             [
                 "entity_id",
@@ -368,7 +381,7 @@ class StructureFile:
             [(1, "polyribonucleotide")],
         )
 
-        entity_poly_seq_str = StructureFile._gen_mmcif_loop_str(
+        entity_poly_seq_str = Structure._gen_mmcif_loop_str(
             "entity_poly_seq",
             [
                 "entity_id",
@@ -378,7 +391,7 @@ class StructureFile:
             ],
             entity_poly_seq_data,
         )
-        atom_site_str = StructureFile._gen_mmcif_loop_str(
+        atom_site_str = Structure._gen_mmcif_loop_str(
             "atom_site",
             [
                 "group_PDB",

@@ -183,11 +183,10 @@ def cluster_sequences(
         )
 
     data = read_json(input_json_path)
-    descriptions = list(data.keys())
-    sequences = [v["sequence"] for v in data.values()]
+    records = [fasta.Record(header=k, sequence=v["sequence"]) for k, v in data.items()]
 
     with tempfile.NamedTemporaryFile() as fasta_f:
-        fasta.write(descriptions, sequences, fasta_f.name)
+        fasta.write(records, fasta_f.name)
         _run_mmseqs2(
             binary_path=mmseqs2_binary_path,
             fasta_path=fasta_f.name,

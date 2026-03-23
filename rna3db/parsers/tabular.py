@@ -4,48 +4,49 @@ from typing import Any, Sequence
 from pathlib import Path
 
 
-def read(path: Path) -> "TabularOutput":
+_TBL_ROW_TYPES = {
+    "target_name": str,
+    "target_accession": str,
+    "query_name": str,
+    "query_accession": lambda x: None if x == "-" else str(x),
+    "mdl": str,
+    "mdl_from": int,
+    "mdl_to": int,
+    "seq_from": int,
+    "seq_to": int,
+    "strand": str,
+    "trunc": lambda x: True if x == "yes" else False,
+    "pass_n": int,
+    "gc": float,
+    "bias": float,
+    "score": float,
+    "e_value": float,
+    "inc": str,
+    "description_of_target": str,
+}
+
+Hit = namedtuple("Hit", list(_TBL_ROW_TYPES.keys()))
+
+
+def read(path: Path) -> "Table":
     """Read a `.tbl` file or a directory of `.tbl` files.
 
     Args:
         path (Path): Path to a `.tbl` file or a directory containing `.tbl` files.
 
     Returns:
-        TabularOutput: Object containing all hits, sorted by E-value.
+        Table: Object containing all hits, sorted by E-value.
     """
     path = Path(path)
     if path.is_dir():
         hits = []
         for p in path.glob("*.tbl"):
-            hits.extend(TabularOutput(p).hits)
-        return TabularOutput(hits=sorted(hits, key=lambda x: x.e_value))
-    return TabularOutput(path)
+            hits.extend(Table(p).hits)
+        return Table(hits=sorted(hits, key=lambda x: x.e_value))
+    return Table(path)
 
 
-class TabularOutput:
-    TBL_ROW_TYPES = {
-        "target_name": str,
-        "target_accession": str,
-        "query_name": str,
-        "query_accession": lambda x: None if x == "-" else str(x),
-        "mdl": str,
-        "mdl_from": int,
-        "mdl_to": int,
-        "seq_from": int,
-        "seq_to": int,
-        "strand": str,
-        "trunc": lambda x: True if x == "yes" else False,
-        "pass_n": int,
-        "gc": float,
-        "bias": float,
-        "score": float,
-        "e_value": float,
-        "inc": str,
-        "description_of_target": str,
-    }
-
-    Hit = namedtuple("Hit", list(TBL_ROW_TYPES.keys()))
-
+class Table:
     def __init__(self, path: Path = None, hits: Sequence[Hit] = None):
         """
         Args:
@@ -62,11 +63,11 @@ class TabularOutput:
         if hits is not None:
             self.hits = hits
 
-    def __getitem__(self, query: str) -> TabularOutput:
+    def __getitem__(self, query: str) -> Table:
         return self.filter_attr_by_value("query_name", query)
 
     def __getattribute__(self, name: str):
-        if name in TabularOutput.TBL_ROW_TYPES:
+        if name in _TBL_ROW_TYPES:
             setattr(self, name, [getattr(hit, name) for hit in self.hits])
         return super().__getattribute__(name)
 
@@ -104,12 +105,12 @@ class TabularOutput:
         return s
 
     @property
-    def reverse(self) -> "TabularOutput":
-        """Return a TabularOutput with hits in reverse order."""
-        return TabularOutput(hits=self.hits[::-1])
+    def reverse(self) -> "Table":
+        """Return a Table with hits in reverse order."""
+        return Table(hits=self.hits[::-1])
 
     @property
-    def top_hits(self) -> "TabularOutput":
+    def top_hits(self) -> "Table":
         """Get the top hit (lowest E-value) for each query in the table.
 
         Note:
@@ -117,7 +118,7 @@ class TabularOutput:
             is kept. This commonly occurs when E-value == 0.0.
 
         Returns:
-            TabularOutput: One hit per query, unsorted.
+            Table: One hit per query, unsorted.
         """
         # this is ugly, but O(n)
         th = {}
@@ -127,34 +128,34 @@ class TabularOutput:
                 continue
             if hit.e_value < th[hit.query_name].e_value:
                 th[hit.query_name] = hit
-        return TabularOutput(hits=list(th.values()))
+        return Table(hits=list(th.values()))
 
-    def filter_e_value(self, cutoff: float) -> TabularOutput:
+    def filter_e_value(self, cutoff: float) -> Table:
         """Filter hits to those with E-value <= cutoff.
 
         Args:
             cutoff (float): Maximum E-value to retain.
 
         Returns:
-            TabularOutput: Filtered hits, sorted by E-value.
+            Table: Filtered hits, sorted by E-value.
         """
         hits = []
         for hit in self.hits:
             if hit.e_value <= cutoff:
                 hits.append(hit)
-        return TabularOutput(hits=sorted(hits, key=lambda x: x.e_value))
+        return Table(hits=sorted(hits, key=lambda x: x.e_value))
 
-    def filter_attr_by_set(self, attr: str, filter_set: Sequence[str]) -> TabularOutput:
+    def filter_attr_by_set(self, attr: str, filter_set: Sequence[str]) -> Table:
         """Filter hits to those whose attribute value is in a given set.
 
         Args:
             attr (str): The hit attribute to filter by. Must be a key of
-                ``TabularOutput.TBL_ROW_TYPES``.
+                ``_TBL_ROW_TYPES``.
             filter_set (Sequence[str]): Any object supporting ``__contains__``
                 to filter by.
 
         Returns:
-            TabularOutput: Filtered hits, sorted by E-value.
+            Table: Filtered hits, sorted by E-value.
 
         Examples:
             >>> print(tbl.target_name)
@@ -164,20 +165,20 @@ class TabularOutput:
             ['5S_rRNA', 'tRNA5', 'tRNA5']
         """
         hits = [hit for hit in self.hits if getattr(hit, attr) in filter_set]
-        return TabularOutput(hits=sorted(hits, key=lambda x: x.e_value))
+        return Table(hits=sorted(hits, key=lambda x: x.e_value))
 
-    def filter_attr_by_value(self, attr: str, val: Any) -> TabularOutput:
+    def filter_attr_by_value(self, attr: str, val: Any) -> Table:
         """Filter hits to those whose attribute matches a single value.
 
         Alias for ``filter_attr_by_set(attr, [val])``.
 
         Args:
             attr (str): The hit attribute to filter by. Must be a key of
-                ``TabularOutput.TBL_ROW_TYPES``.
+                ``_TBL_ROW_TYPES``.
             val: Value to filter by.
 
         Returns:
-            TabularOutput: Filtered hits, sorted by E-value.
+            Table: Filtered hits, sorted by E-value.
 
         Examples:
             >>> print(tbl.target_name)
@@ -191,14 +192,14 @@ class TabularOutput:
     def _parse_tbl_row(s):
         row = s.split()
 
-        for i, field in enumerate(TabularOutput.Hit._fields):
-            row[i] = TabularOutput.TBL_ROW_TYPES[field](row[i])
+        for i, field in enumerate(Hit._fields):
+            row[i] = _TBL_ROW_TYPES[field](row[i])
 
         # handle spaces in the last column
         row[i] = " ".join(row[i:])
         del row[i + 1 :]
 
-        return TabularOutput.Hit(*row)
+        return Hit(*row)
 
     def _parse_tbl(self, path):
         entries = []

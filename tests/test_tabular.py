@@ -4,7 +4,7 @@ import tempfile
 
 from collections import defaultdict
 
-from rna3db.parsers.tabular import TabularOutput
+from rna3db.parsers.tabular import Table, Hit
 
 TBL_STR = (
     "#target name         accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target\n"
@@ -80,7 +80,7 @@ TEST_DICTS = [
 class TestTabularParser(unittest.TestCase):
     def setUp(self):
         with self.tmp_txt(TBL_STR) as f:
-            self.tbl = TabularOutput(f.name)
+            self.tbl = Table(f.name)
 
     @contextlib.contextmanager
     def tmp_txt(self, s: str):
@@ -92,27 +92,27 @@ class TestTabularParser(unittest.TestCase):
         finally:
             tmp.close()
 
-    def _assert_hit(self, hit: TabularOutput.Hit, test_dict: dict):
+    def _assert_hit(self, hit: Hit, test_dict: dict):
         for k, v in test_dict.items():
             self.assertEqual(hit.__getattribute__(k), v)
 
     def test_row_parse(self):
         for row_str, test_dict in zip(TBL_STR.split("\n")[2:], TEST_DICTS):
-            hit = TabularOutput._parse_tbl_row(row_str)
+            hit = Table._parse_tbl_row(row_str)
             self._assert_hit(hit, test_dict)
 
     def test_parse_tbl(self):
-        tbl = TabularOutput(hits=[])
+        tbl = Table(hits=[])
         with self.tmp_txt(TBL_STR) as f:
             entries = tbl._parse_tbl(f.name)
             for hit, test_dict in zip(entries, TEST_DICTS):
                 self._assert_hit(hit, test_dict)
 
     def test_len(self):
-        empty_hit = TabularOutput.Hit(*[None] * 18)
-        self.assertEqual(len(TabularOutput(hits=[])), 0)
-        self.assertEqual(len(TabularOutput(hits=[empty_hit] * 1)), 1)
-        self.assertEqual(len(TabularOutput(hits=[empty_hit] * 1337)), 1337)
+        empty_hit = Hit(*[None] * 18)
+        self.assertEqual(len(Table(hits=[])), 0)
+        self.assertEqual(len(Table(hits=[empty_hit] * 1)), 1)
+        self.assertEqual(len(Table(hits=[empty_hit] * 1337)), 1337)
 
     def test_tophits(self):
         tbl = self.tbl.top_hits

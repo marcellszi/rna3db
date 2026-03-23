@@ -1,19 +1,24 @@
 from pathlib import Path
-from typing import Sequence
+from typing import NamedTuple
 
 
-def read(path: Path, force_gzip: bool = False) -> tuple[list[str], list[str]]:
-    """Parse a FASTA file.
+class Record(NamedTuple):
+    header: str
+    sequence: str
+
+
+def read(path: Path, force_gzip: bool = False) -> list[Record]:
+    """Parse a Record file.
 
     Supports multi-line sequences.
 
     Args:
-        path (Path): Path to input FASTA file.
+        path (Path): Path to input Record file.
         force_gzip (bool, optional): If True, will attempt to read the file as a
             gzip file.
 
     Returns:
-        tuple: A pair (descriptions, sequences) where each is a list of strings.
+        list[Record]: List of Record records.
     """
     if Path(path).suffix == ".gz" or force_gzip:
         import gzip
@@ -22,34 +27,32 @@ def read(path: Path, force_gzip: bool = False) -> tuple[list[str], list[str]]:
     else:
         reader = open(path, "r")
     with reader as f:
-        descriptions = []
-        sequences = []
-        i = -1
+        records = []
+        current_header = None
+        current_sequence = ""
         for line in f:
             line = line.strip()
             if line.startswith(">"):
-                i += 1
-                descriptions.append(line[1:])
-                sequences.append("")
+                if current_header is not None:
+                    records.append(Record(current_header, current_sequence))
+                current_header = line[1:]
+                current_sequence = ""
             elif line.startswith("#") or not line:
                 continue
             else:
-                sequences[i] += line
-    return descriptions, sequences
+                current_sequence += line
+        if current_header is not None:
+            records.append(Record(current_header, current_sequence))
+    return records
 
 
-def write(
-    descriptions: Sequence[str], sequences: Sequence[str], output_path: Path
-):
-    """Write to a FASTA file.
+def write(records: Record[Record], output_path: Path):
+    """Write Record records to a file.
 
     Args:
-        descriptions (Sequence[str]): List of descriptions for each sequence.
-        sequences (Sequence[str]): List of sequences.
-        output_path (Path): Path to write FASTA file to.
+        records (Record[Record]): Record records to write.
+        output_path (Path): Path to write Record file to.
     """
-    if len(descriptions) != len(sequences):
-        raise ValueError("The length of descriptions and sequences must match.")
     with open(output_path, "w") as f:
-        for k, v in zip(descriptions, sequences):
-            f.write(f">{k}\n{v}\n")
+        for record in records:
+            f.write(f">{record.header}\n{record.sequence}\n")

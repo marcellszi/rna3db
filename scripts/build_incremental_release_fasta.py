@@ -1,7 +1,6 @@
 from rna3db.utils import read_json
 from rna3db.parsers import fasta
 
-from collections import defaultdict
 from pathlib import Path
 
 import argparse
@@ -18,9 +17,9 @@ if __name__ == "__main__":
     old_parse = read_json(args.old_path)
     new_parse = read_json(args.new_path)
 
-    descriptions, sequences = [], []
-    for k in set(new_parse.keys()) - set(old_parse.keys()):
-        descriptions.append(k)
-        sequences.append(new_parse[k]["sequence"])
+    records = [
+        fasta.Record(header=k, sequence=new_parse[k]["sequence"])
+        for k in set(new_parse.keys()) - set(old_parse.keys())
+    ]
 
-    fasta.write(descriptions, sequences, args.output_path)
+    fasta.write(records, args.output_path)
