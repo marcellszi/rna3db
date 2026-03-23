@@ -32,6 +32,24 @@ def apply_filters(
     max_unknown_ratio: float = 0.3,
     filter_log_path: Path = None,
 ) -> dict:
+    """Filter a parsed JSON of RNA chains by quality criteria.
+
+    Each filter is only applied if its threshold is truthy (non-zero, non-None).
+
+    Args:
+        data (dict): Parsed chain data, keyed by chain ID.
+        min_length (int): Remove chains shorter than this.
+        max_resolution (float): Remove chains with resolution above this.
+        single_ratio_cutoff (float): Remove chains where any single
+            nucleotide makes up more than this fraction of residues.
+        max_unknown_ratio (float): Remove chains with more than this
+            fraction of unknown nucleotides (N).
+        filter_log_path (Path, optional): If provided, write a JSON log
+            mapping each chain ID to the filters that hit it.
+
+    Returns:
+        dict: Filtered chain data, keyed by chain ID.
+    """
     # Build (name, predicate, threshold) tuples for each active filter.
     # A filter is skipped if its threshold is falsy (0 or None).
     active = []

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Sequence
 
 
-def read(path, force_gzip=False):
+def read(path: Path, force_gzip: bool = False) -> tuple[list[str], list[str]]:
     """Parse a FASTA file.
 
     Supports multi-line sequences.
@@ -38,12 +38,14 @@ def read(path, force_gzip=False):
     return descriptions, sequences
 
 
-def write(descriptions: Sequence[str], sequences: Sequence[str], output_path: Path):
+def write(
+    descriptions: Sequence[str], sequences: Sequence[str], output_path: Path
+):
     """Write to a FASTA file.
 
     Args:
-        descriptions (Sequence): List of descriptions for each sequence.
-        sequences (Sequence): List of sequences.
+        descriptions (Sequence[str]): List of descriptions for each sequence.
+        sequences (Sequence[str]): List of sequences.
         output_path (Path): Path to write FASTA file to.
     """
     if len(descriptions) != len(sequences):

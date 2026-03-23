@@ -13,7 +13,7 @@ from rna3db.utils import read_json, write_json
 
 def _read_as_dict(
     path: Path, nmr_resolution: float = None, include_atoms: bool = False
-):
+) -> dict:
     d = {}
     try:
         sf = StructureFile(path, nmr_resolution, include_atoms)
@@ -37,7 +37,7 @@ def _read_as_dict(
     return d
 
 
-def _do_parse(args, input_path: Path, output_path: Path):
+def _do_parse(args,input_path: Path, output_path: Path):
     files = list(input_path.glob("*.cif"))
     data = {}
     f = partial(
@@ -52,7 +52,7 @@ def _do_parse(args, input_path: Path, output_path: Path):
     write_json(data, output_path)
 
 
-def _do_filter(args, input_path: Path, output_path: Path):
+def _do_filter(args,input_path: Path, output_path: Path):
     data = read_json(input_path)
     filtered = apply_filters(
         data,
@@ -65,7 +65,7 @@ def _do_filter(args, input_path: Path, output_path: Path):
     write_json(filtered, output_path)
 
 
-def _do_cluster(args, input_path: Path, output_path: Path):
+def _do_cluster(args,input_path: Path, output_path: Path):
     only_sequence = getattr(args, "only_sequence", False)
     only_structure = getattr(args, "only_structure", False)
 
@@ -91,7 +91,7 @@ def _do_cluster(args, input_path: Path, output_path: Path):
         write_json(cluster, output_path)
 
 
-def _do_split(args, input_path: Path, output_path: Path):
+def _do_split(args,input_path: Path, output_path: Path):
     split(
         input_path,
         output_path,
@@ -190,7 +190,10 @@ if __name__ == "__main__":
         "--min_seq_id",
         type=float,
         default=0.99,
-        help="Minimum sequence identity for a match to be retained (--min-seq-id, range 0.0-1.0).",
+        help=(
+            "Minimum sequence identity for a match to be retained "
+            "(--min-seq-id, range 0.0-1.0)."
+        ),
     )
     _cluster_args.add_argument(
         "--min_seq_coverage",

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from collections import namedtuple
-from typing import Sequence
+from typing import Any, Sequence
 from pathlib import Path
 
 
@@ -70,13 +70,13 @@ class TabularOutput:
             setattr(self, name, [getattr(hit, name) for hit in self.hits])
         return super().__getattribute__(name)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.hits)
 
     def __iter__(self):
         return iter(self.hits)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         col_width = 20
         print_cols = [
             "target_name",
@@ -104,12 +104,12 @@ class TabularOutput:
         return s
 
     @property
-    def reverse(self):
+    def reverse(self) -> "TabularOutput":
         """Return a TabularOutput with hits in reverse order."""
         return TabularOutput(hits=self.hits[::-1])
 
     @property
-    def top_hits(self):
+    def top_hits(self) -> "TabularOutput":
         """Get the top hit (lowest E-value) for each query in the table.
 
         Note:
@@ -150,7 +150,8 @@ class TabularOutput:
         Args:
             attr (str): The hit attribute to filter by. Must be a key of
                 ``TabularOutput.TBL_ROW_TYPES``.
-            filter_set (Sequence): Any object supporting ``__contains__`` to filter by.
+            filter_set (Sequence[str]): Any object supporting ``__contains__``
+                to filter by.
 
         Returns:
             TabularOutput: Filtered hits, sorted by E-value.
@@ -165,7 +166,7 @@ class TabularOutput:
         hits = [hit for hit in self.hits if getattr(hit, attr) in filter_set]
         return TabularOutput(hits=sorted(hits, key=lambda x: x.e_value))
 
-    def filter_attr_by_value(self, attr: str, val) -> TabularOutput:
+    def filter_attr_by_value(self, attr: str, val: Any) -> TabularOutput:
         """Filter hits to those whose attribute matches a single value.
 
         Alias for ``filter_attr_by_set(attr, [val])``.

@@ -70,16 +70,31 @@ def split(
     split_names: Sequence[str] = ["train_set", "valid_set", "test_set"],
     shuffle: bool = False,
     force_zero_last: bool = False,
-):
-    """A function that splits a JSON of components into a train/test set.
+) -> dict:
+    """Split a JSON of clustered components into train/validation/test sets.
 
-    The split is done by assigning components into the training set until a
-    specified training set split percentage (train_size) is met. This is done
-    starting with the largest component.
+    Components are assigned to sets using an ILP formulation that minimises
+    the deviation from the requested split ratios.
 
     Args:
-        input_path (Path): path to JSON containing components
-        output_path (Path): path to output JSON
+        input_path (Path): Path to JSON containing clustered components.
+        output_path (Path, optional): Path to write the output JSON. If
+            None, no file is written.
+        splits (Sequence[float]): Target fractional sizes for each set.
+            Must sum to 1.0.
+        split_names (Sequence[str]): Names for each set, used as keys in
+            the output dict. Must have the same length as ``splits``.
+        shuffle (bool): If True, shuffle components before splitting.
+        force_zero_last (bool): If True, force ``component_0`` (chains
+            with no Infernal hits) into the last set.
+
+    Returns:
+        dict: Mapping from set name to the components assigned to it.
+
+    Raises:
+        ValueError: If ``splits`` does not sum to 1.0, if ``splits`` and
+            ``split_names`` differ in length, or if ``component_0`` is too
+            large to fit in the last set when ``force_zero_last`` is True.
     """
     if sum(splits) != 1.0:
         raise ValueError("Sum of splits must equal 1.0.")
@@ -108,7 +123,8 @@ def split(
     if force_zero_last:
         if bins[-1] < len(cluster_json["component_0"]):
             print(
-                "ERROR: cannot force `component_0` into the last bin. Increase the last bin size."
+                "ERROR: cannot force `component_0` into the last bin. "
+                "Increase the last bin size."
             )
             raise ValueError
         bins[-1] -= len(cluster_json["component_0"])

@@ -1,4 +1,4 @@
-from typing import Sequence, Mapping, Tuple
+from typing import Sequence, Mapping, Tuple, Iterator
 from collections import defaultdict
 from pathlib import Path
 from Bio import PDB
@@ -50,9 +50,10 @@ class Residue:
         self.one_letter_code = one_letter_code
         self.index = index
         # NOTE: we need to handle dict like this, cannot use `atoms: dict = {}`
-        # in the method definition. See important warning:
-        # https://docs.python.org/3/tutorial/controlflow.html#default-argument-values
-        # (the default value is evaluated only once, causing issues with mutable dicts)
+        #       in the method definition. See important warning:
+        #       https://docs.python.org/3/tutorial/controlflow.html#default-argument-values
+        #       (the default value is evaluated only once, causing issues with
+        #       mutable dicts)
         self.atoms = atoms if atoms else {}
 
     @property
@@ -63,7 +64,7 @@ class Residue:
     def is_missing(self) -> bool:
         return not len(self.atoms) > 0
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         # NOTE: we don't care about three letter codes, only one letter
         #       this means modifications are still equal
         return (
@@ -101,10 +102,10 @@ class Chain:
             return None
         return self.residues[idx]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.residues)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         # NOTE: we ignore the author_id for equality checks
         if len(self) != len(other):
             return False
@@ -116,7 +117,7 @@ class Chain:
         return True
 
     @property
-    def has_atoms(self):
+    def has_atoms(self) -> bool:
         return any([not res.is_missing for res in self])
 
     def add_residue(self, res: Residue):
@@ -145,13 +146,13 @@ class Chain:
             raise ValueError(f"Cannot add residues out of order.")
 
     @property
-    def sequence(self):
+    def sequence(self) -> str:
         return "".join(i.code for i in self.residues)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Chain(author_id={self.author_id}, len={len(self)})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         max_line_length = 120
         idx_steps = 50
 
@@ -226,13 +227,13 @@ class StructureFile:
         self.structure_method = parser.structure_method
         self.chains = parser.chains
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: str) -> Chain:
         return self.chains[idx]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Chain]:
         return iter(self.chains.values())
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"StructureFile(pdb_id={self.pdb_id}, chains={self.chains.keys()}, "
             f"resolution={self.resolution}, release_date={self.release_date}, "
@@ -240,7 +241,9 @@ class StructureFile:
         )
 
     @staticmethod
-    def _gen_mmcif_loop_str(name: str, headers: Sequence[str], values: Sequence[tuple]):
+    def _gen_mmcif_loop_str(
+        name: str, headers: Sequence[str], values: Sequence[tuple]
+    ) -> str:
         s = "#\nloop_\n"
         for header in headers:
             s += f"_{name}.{header}\n"
@@ -440,11 +443,11 @@ class mmCIFParser:
         self.parsed_info = PDB.MMCIF2Dict.MMCIF2Dict(self.path)
 
     @property
-    def pdb_id(self):
+    def pdb_id(self) -> str:
         return self.parsed_info["_entry.id"][0].lower()
 
     @property
-    def release_date(self):
+    def release_date(self) -> str:
         # prefer to get the date from the earliest revision date
         if "_pdbx_audit_revision_history.revision_date" in self.parsed_info:
             return min(self.parsed_info["_pdbx_audit_revision_history.revision_date"])
@@ -454,7 +457,7 @@ class mmCIFParser:
         )
 
     @property
-    def resolution(self):
+    def resolution(self) -> float:
         resolutions = []
         for res_key in [
             "_refine.ls_d_res_high",
@@ -475,7 +478,7 @@ class mmCIFParser:
         return max(resolutions)
 
     @property
-    def structure_method(self):
+    def structure_method(self) -> str:
         return ",".join(self.parsed_info["_exptl.method"]).lower()
 
     @dataclasses.dataclass
@@ -484,39 +487,39 @@ class mmCIFParser:
         three_letter_code: str
         author_chain_id: str
         entity_id: str
-        author_seq_num: int
-        mmcif_seq_num: int
+        author_seq_num: str
+        mmcif_seq_num: str
         insertion_code: str
         hetatm_atom: str
         alt_id: str
-        x: float
-        y: float
-        z: float
+        x: str
+        y: str
+        z: str
 
     @staticmethod
-    def _get_atom_sites(parsed_info: PDB.MMCIF2Dict):
+    def _get_atom_sites(parsed_info: PDB.MMCIF2Dict) -> list:
+        # fmt: off
         return [
             mmCIFParser._AtomSite(*site)
             for site in zip(
-                parsed_info["_atom_site.label_atom_id"],  # atom name
-                parsed_info["_atom_site.label_comp_id"],  # residue name
-                parsed_info["_atom_site.auth_asym_id"],  # author chain
-                parsed_info["_atom_site.label_entity_id"],  # entity id
-                parsed_info["_atom_site.auth_seq_id"],  # author_seq_num
-                parsed_info["_atom_site.label_seq_id"],  # mmcif_seq_num
-                parsed_info["_atom_site.pdbx_PDB_ins_code"],  # insertion code?
-                parsed_info["_atom_site.group_PDB"],  # hetatm_atom
-                parsed_info[
-                    "_atom_site.label_alt_id"
-                ],  # alternative conformation identifier
-                parsed_info["_atom_site.Cartn_x"],  # x
-                parsed_info["_atom_site.Cartn_y"],  # y
-                parsed_info["_atom_site.Cartn_z"],  # z
+                parsed_info["_atom_site.label_atom_id"],     # atom name
+                parsed_info["_atom_site.label_comp_id"],     # residue name
+                parsed_info["_atom_site.auth_asym_id"],      # author chain
+                parsed_info["_atom_site.label_entity_id"],   # entity id
+                parsed_info["_atom_site.auth_seq_id"],       # author_seq_num
+                parsed_info["_atom_site.label_seq_id"],      # mmcif_seq_num
+                parsed_info["_atom_site.pdbx_PDB_ins_code"], # insertion code
+                parsed_info["_atom_site.group_PDB"],         # hetatm_atom
+                parsed_info["_atom_site.label_alt_id"],      # alt conformation id
+                parsed_info["_atom_site.Cartn_x"],           # x
+                parsed_info["_atom_site.Cartn_y"],           # y
+                parsed_info["_atom_site.Cartn_z"],           # z
             )
         ]
+        # fmt: on
 
     @property
-    def chains(self):
+    def chains(self) -> Mapping[str, Chain]:
         # no SEQRES chains in this file
         if "_entity_poly_seq.entity_id" not in self.parsed_info:
             return {}
