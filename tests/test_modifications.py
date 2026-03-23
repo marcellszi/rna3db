@@ -2,7 +2,7 @@ from Bio.Data import PDBData
 from pathlib import Path
 import unittest
 
-from rna3db.parser import ModificationHandler
+from rna3db.modifications import ModificationHandler
 
 
 class TestModifications(unittest.TestCase):

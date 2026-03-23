@@ -4,20 +4,19 @@ Downloads the Chemical Component Dictionary (CCD) from wwPDB, processes it to
 extract nucleic acid (RNA/DNA) residue mappings, and caches the result locally.
 """
 
-import gzip
 import json
 import logging
-import os
-import urllib.request
 from pathlib import Path
+
+from rna3db.ccd import (
+    CACHE_DIR,
+    download_ccd,
+    parse_components_gz,
+    parse_cif_fields,
+)
 
 logger = logging.getLogger(__name__)
 
-CCD_URL = "https://files.wwpdb.org/pub/pdb/data/monomers/components.cif.gz"
-# follows the same cache convention as PyTorch
-# see https://github.com/pytorch/pytorch/blob/main/torch/hub.py#L183-L190
-_xdg_cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-CACHE_DIR = Path(os.environ.get("RNA3DB_CACHE_DIR", _xdg_cache / "rna3db"))
 CACHE_FILE = "modifications_cache.json"
 VALID_RNA_CODES = set("ACGUT")
 
@@ -27,64 +26,18 @@ def get_cache_path() -> Path:
     return CACHE_DIR / CACHE_FILE
 
 
-def _download_ccd(dest: Path) -> Path:
-    """Download components.cif.gz from wwPDB."""
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    logger.info(f"Downloading CCD from {CCD_URL} ...")
-    urllib.request.urlretrieve(CCD_URL, dest)
-    logger.info("Download complete.")
-    return dest
-
-
-def _parse_components_gz(gz_path: Path) -> dict:
-    """Parse all components from a gzipped CCD file into {id: cif_text}."""
-    cif_strings = {}
-    chem_comp_id, cif_lines = None, []
-    with gzip.open(gz_path, "rt") as fp:
-        for line in fp:
-            if line.startswith("data_"):
-                if cif_lines:
-                    cif_strings[chem_comp_id] = "".join(cif_lines)
-                chem_comp_id = line.split("_")[-1].rstrip()
-                cif_lines = []
-            cif_lines.append(line)
-        if cif_lines:
-            cif_strings[chem_comp_id] = "".join(cif_lines)
-    return cif_strings
-
-
-def _parse_cif_fields(cif_string: str):
-    """Extract key fields from a single CCD component's CIF text."""
-    comp_id = comp_type = one_letter = parent_id = release_status = "?"
-    for line in cif_string.split("\n"):
-        if line.startswith("_chem_comp.id"):
-            comp_id = line.split()[-1]
-        elif line.startswith("_chem_comp.type"):
-            comp_type = " ".join(line.split()[1:])
-        elif line.startswith("_chem_comp.one_letter_code"):
-            one_letter = line.split()[-1]
-        elif line.startswith("_chem_comp.mon_nstd_parent_comp_id"):
-            cleaned = "".join(c for c in line.split()[-1] if c.isalnum() or c == "?")
-            parent_id = (cleaned or "?")[:3].upper()
-        elif line.startswith("_chem_comp.pdbx_release_status"):
-            release_status = line.split()[-1]
-    return comp_id, comp_type, one_letter, parent_id, release_status
-
-
 def _resolve_one_letter(comp_id: str, cif_strings: dict, _seen=None) -> tuple:
     """Resolve a component's one-letter code, following parent references."""
     if _seen is None:
         _seen = set()
     if comp_id in _seen:
-        return "?", "?", "?"
+        return "?", "?"
     _seen.add(comp_id)
 
     if comp_id not in cif_strings:
-        return "?", "?", "?"
+        return "?", "?"
 
-    cid, comp_type, one_letter, parent_id, release_status = _parse_cif_fields(
-        cif_strings[comp_id]
-    )
+    cid, comp_type, one_letter, parent_id, *_ = parse_cif_fields(cif_strings[comp_id])
 
     # follow parent reference
     if parent_id != "?" and cid != parent_id:
@@ -94,7 +47,7 @@ def _resolve_one_letter(comp_id: str, cif_strings: dict, _seen=None) -> tuple:
     if len(one_letter) > 1 and one_letter in cif_strings:
         return _resolve_one_letter(one_letter, cif_strings, _seen)
 
-    return one_letter, comp_type, release_status
+    return one_letter, comp_type
 
 
 def _generate_cache(cif_strings: dict) -> dict:
@@ -103,11 +56,11 @@ def _generate_cache(cif_strings: dict) -> dict:
 
     for comp_id in cif_strings:
         # check obsolete status on the component itself, before resolving parents
-        _, _, _, _, release_status = _parse_cif_fields(cif_strings[comp_id])
+        _, _, _, _, release_status, _, _, _ = parse_cif_fields(cif_strings[comp_id])
         if release_status == "OBS":
             continue
 
-        one_letter, comp_type, _ = _resolve_one_letter(comp_id, cif_strings)
+        one_letter, comp_type = _resolve_one_letter(comp_id, cif_strings)
 
         # only keep nucleic acid types with valid single-letter codes
         if ("RNA" in comp_type or "DNA" in comp_type) and one_letter in VALID_RNA_CODES:
@@ -116,22 +69,26 @@ def _generate_cache(cif_strings: dict) -> dict:
     return data
 
 
-def generate_from_ccd() -> dict:
-    """Download the CCD and generate a fresh modifications cache.
+def generate_from_ccd(cif_strings: dict = None) -> dict:
+    """Generate the modifications cache, optionally reusing already-parsed CCD data.
+
+    Args:
+        cif_strings: Pre-parsed CCD components (from ccd.parse_components_gz).
+            If None, downloads and parses the CCD from scratch.
 
     Returns:
         dict: Mapping of 3-letter CCD codes to 1-letter RNA/DNA codes.
     """
-    gz_path = CACHE_DIR / "components.cif.gz"
-    try:
-        _download_ccd(gz_path)
-        logger.info("Parsing CCD components ...")
-        cif_strings = _parse_components_gz(gz_path)
-        logger.info("Generating nucleic acid modifications cache ...")
-        data = _generate_cache(cif_strings)
-    finally:
-        # always clean up the large download
-        gz_path.unlink(missing_ok=True)
+    if cif_strings is None:
+        gz_path = download_ccd()
+        try:
+            logger.info("Parsing CCD components ...")
+            cif_strings = parse_components_gz(gz_path)
+        finally:
+            gz_path.unlink(missing_ok=True)
+
+    logger.info("Generating nucleic acid modifications cache ...")
+    data = _generate_cache(cif_strings)
 
     # save to cache
     cache_path = get_cache_path()
@@ -141,6 +98,43 @@ def generate_from_ccd() -> dict:
     logger.info(f"Modifications cache saved to {cache_path} ({len(data)} entries)")
 
     return data
+
+
+class ModificationHandler:
+    def __init__(self, json_path=None):
+        """Used for converting `three_letter_code`s to `one_letter_code`s, including modifications.
+
+        On first use, automatically downloads and processes the Chemical Component
+        Dictionary (CCD) from wwPDB, caching the result in ``~/.cache/rna3db/``.
+        Set the ``RNA3DB_CACHE_DIR`` environment variable to override the cache location.
+
+        Args:
+            json_path (PathLike, optional): Explicit path to a modifications cache JSON file.
+                If not provided, the cache is loaded (or generated) automatically.
+        """
+        self.modifications = load(Path(json_path) if json_path else None)
+
+    def is_rna(self, three_letter_code: str) -> bool:
+        """Check if `three_letter_code` is a known RNA/DNA nucleic acid residue.
+
+        Args:
+            three_letter_code (str): Three letter code to check.
+
+        Returns:
+            bool: True if `three_letter_code` is a known nucleic acid residue.
+        """
+        return three_letter_code in self.modifications
+
+    def rna_letters_3to1(self, three_letter_code: str) -> str:
+        """Convert RNA nucleic acid `three_letter_code` to `one_letter_code`.
+
+        Args:
+            three_letter_code (str): Three letter code to check.
+
+        Returns:
+           str: one_letter_code of RNA nucleic acid, "N" if cannot be found.
+        """
+        return self.modifications.get(three_letter_code, "N")
 
 
 def load(json_path=None) -> dict:

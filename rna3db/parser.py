@@ -3,6 +3,8 @@ from collections import defaultdict
 from pathlib import Path
 from Bio import PDB
 
+from rna3db.modifications import ModificationHandler
+from rna3db.chem_comp import load as load_chem_comps
 from rna3db.utils import PathLike
 
 import dataclasses
@@ -208,45 +210,6 @@ class Chain:
         return S
 
 
-class ModificationHandler:
-    def __init__(self, json_path: PathLike = None):
-        """Used for converting `three_letter_code`s to `one_letter_code`s, including modifications.
-
-        On first use, automatically downloads and processes the Chemical Component
-        Dictionary (CCD) from wwPDB, caching the result in ``~/.cache/rna3db/``.
-        Set the ``RNA3DB_CACHE_DIR`` environment variable to override the cache location.
-
-        Args:
-            json_path (PathLike, optional): Explicit path to a modifications cache JSON file.
-                If not provided, the cache is loaded (or generated) automatically.
-        """
-        from rna3db.modifications import load
-
-        self.modifications = load(Path(json_path) if json_path else None)
-
-    def is_rna(self, three_letter_code: str) -> bool:
-        """Check if `three_letter_code` is a known RNA/DNA nucleic acid residue.
-
-        Args:
-            three_letter_code (str): Three letter code to check.
-
-        Returns:
-            bool: True if `three_letter_code` is a known nucleic acid residue.
-        """
-        return three_letter_code in self.modifications
-
-    def rna_letters_3to1(self, three_letter_code: str) -> str:
-        """Convert RNA nucleic acid `three_letter_code` to `one_letter_code`.
-
-        Args:
-            three_letter_code (str): Three letter code to check.
-
-        Returns:
-           str: one_letter_code of RNA nucleic acid, "N" if cannot be found.
-        """
-        return self.modifications.get(three_letter_code, "N")
-
-
 class StructureFile:
     def __init__(
         self,
@@ -402,43 +365,15 @@ class StructureFile:
             ],
             [
                 (
-                    "A",
+                    comp["id"],
                     "'RNA linking'",
                     "y",
-                    '"ADENOSINE-5\'-MONOPHOSPHATE"',
+                    f'"{comp["name"]}"',
                     "?",
-                    "'C10 H14 N5 O7 P'",
-                    347.221,
-                ),
-                (
-                    "C",
-                    "'RNA linking'",
-                    "y",
-                    '"CYTIDINE-5\'-MONOPHOSPHATE"',
-                    "?",
-                    "'C9 H14 N3 O8 P'",
-                    323.197,
-                ),
-                (
-                    "G",
-                    "'RNA linking'",
-                    "y",
-                    '"GUANOSINE-5\'-MONOPHOSPHATE"',
-                    "?",
-                    "'C9 H13 N2 O9 P'",
-                    363.221,
-                ),
-                (
-                    "U",
-                    "'RNA linking'",
-                    "y",
-                    '"URIDINE-5\'-MONOPHOSPHATE"',
-                    "?",
-                    "'C9 H13 N2 O9 P'",
-                    324.181,
-                ),
-                ("T", "'RNA linking'", "y", '"T"', "?", "''", 0),
-                ("N", "'RNA linking'", "y", '"N"', "?", "''", 0),
+                    f"'{comp['formula']}'" if comp["formula"] != "?" else "?",
+                    comp["weight"],
+                )
+                for comp in load_chem_comps()
             ],
         )
         entity_poly = StructureFile._gen_mmcif_loop_str(
