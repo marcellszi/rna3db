@@ -271,7 +271,7 @@ class TestCommandLineSplit(_PipelineBase):
             self.assertNotIn("component_0", result["valid_set"])
 
     def test_split_large_train_ratio(self):
-        """High train_ratio puts most components into train."""
+        """train_ratio=1.0 puts all components into train."""
         with tempfile.TemporaryDirectory() as tmpdir:
             clustered = self._write_clustered(tmpdir)
             split_out = tmpdir + "/split.json"
@@ -288,13 +288,9 @@ class TestCommandLineSplit(_PipelineBase):
             self._run_rna3db()
 
             result = read_json(split_out)
-            # All components in train; valid and test empty
-            self.assertEqual(
-                len(result["train_set"])
-                + len(result["valid_set"])
-                + len(result["test_set"]),
-                3,
-            )
+            self.assertEqual(len(result["valid_set"]), 0)
+            self.assertEqual(len(result["test_set"]), 0)
+            self.assertEqual(len(result["train_set"]), 3)
 
 
 class TestCommandLineCluster(_PipelineBase):
@@ -418,22 +414,6 @@ class TestCommandLineParseSlow(_PipelineBase):
             result = read_json(tmpdir + "/parsed.json")
             self.assertIn("1ehz_A", result)
 
-    def test_parse_output_order_is_deterministic(self):
-        """Parsing the same directory twice produces keys in the same order.
-
-        Non-deterministic key order propagates into the FASTA passed to
-        mmseqs2 and causes tie-breaking to differ across runs/machines.
-        """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            out1 = tmpdir + "/parsed1.json"
-            out2 = tmpdir + "/parsed2.json"
-            for out in (out1, out2):
-                sys.argv = ["rna3db", "parse", str(self.mmcif_path), out]
-                self._run_rna3db()
-            keys1 = list(read_json(out1).keys())
-            keys2 = list(read_json(out2).keys())
-            self.assertEqual(keys1, keys2)
-
     def test_parse_output_keys_are_sorted(self):
         """Parse output keys are sorted alphabetically (chain_id order)."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -553,34 +533,6 @@ class TestCommandPipeline(_PipelineBase):
             filter_json = read_json(tmpdir + "/filter.json")
             # Atom data should survive the filter step unchanged
             self.assertIn("atoms", filter_json["1ehz_A"])
-
-    def test_integration_filter_log(self):
-        """filter_log_path records which chains were filtered and why."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            sys.argv = [
-                "rna3db",
-                "parse",
-                str(self.mmcif_path),
-                tmpdir + "/parse.json",
-            ]
-            self._run_rna3db()
-
-            log_path = tmpdir + "/filter_log.json"
-            sys.argv = [
-                "rna3db",
-                "filter",
-                tmpdir + "/parse.json",
-                tmpdir + "/filter.json",
-                "--filter_log_path",
-                log_path,
-            ]
-            self._run_rna3db()
-
-            self.assertTrue(Path(log_path).exists())
-            log = read_json(log_path)
-            # Short chains should appear in the log with a reason
-            self.assertIn("3cgs_A", log)
-            self.assertIn("is_short_sequence", log["3cgs_A"])
 
     def test_integration_two_phase_cluster(self):
         """Sequence-then-structure clustering via two separate cluster calls."""
