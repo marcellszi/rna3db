@@ -1,5 +1,5 @@
 from rna3db.utils import write_json
-from rna3db.parser import parse_fasta
+from rna3db.parsers import fasta
 
 from collections import defaultdict
 from pathlib import Path
@@ -14,7 +14,7 @@ if __name__ == "__main__":
     parser.add_argument("output_path", type=Path)
     args = parser.parse_args()
 
-    descriptions, sequences = parse_fasta(args.input_path)
+    descriptions, sequences = fasta.read(args.input_path)
     data = defaultdict(dict)
     for k, v in zip(descriptions, sequences):
         data[k]["release_date"] = "1970-01-01"

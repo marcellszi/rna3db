@@ -3,7 +3,8 @@ import pulp
 
 from typing import Sequence
 
-from rna3db.utils import PathLike, read_json, write_json
+from pathlib import Path
+from rna3db.utils import read_json, write_json
 
 
 def find_optimal_components(
@@ -63,8 +64,8 @@ def find_optimal_components(
 
 
 def split(
-    input_path: PathLike,
-    output_path: PathLike = None,
+    input_path: Path,
+    output_path: Path = None,
     splits: Sequence[float] = [0.7, 0.0, 0.3],
     split_names: Sequence[str] = ["train_set", "valid_set", "test_set"],
     shuffle: bool = False,
@@ -77,8 +78,8 @@ def split(
     starting with the largest component.
 
     Args:
-        input_path (PathLike): path to JSON containing components
-        output_path (PathLike): path to output JSON
+        input_path (Path): path to JSON containing components
+        output_path (Path): path to output JSON
     """
     if sum(splits) != 1.0:
         raise ValueError("Sum of splits must equal 1.0.")

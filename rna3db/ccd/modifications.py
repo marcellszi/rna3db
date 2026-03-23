@@ -109,7 +109,7 @@ class ModificationHandler:
         Set the ``RNA3DB_CACHE_DIR`` environment variable to override the cache location.
 
         Args:
-            json_path (PathLike, optional): Explicit path to a modifications cache JSON file.
+            json_path (Path, optional): Explicit path to a modifications cache JSON file.
                 If not provided, the cache is loaded (or generated) automatically.
         """
         self.modifications = load(Path(json_path) if json_path else None)

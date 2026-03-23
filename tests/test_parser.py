@@ -3,7 +3,8 @@ import unittest
 from tempfile import NamedTemporaryFile
 from pathlib import Path
 
-from rna3db.parser import parse_file, Residue, Chain
+from rna3db.parsers import structure
+from rna3db.parsers.structure import Residue, Chain
 
 
 class TestmmCIFWriter(unittest.TestCase):
@@ -12,7 +13,7 @@ class TestmmCIFWriter(unittest.TestCase):
     test_two_chain_path = Path(__file__).parent / "test_data" / "mmcifs" / "3cgs.cif"
 
     def test_simple_mmcif_read(self):
-        sf = parse_file(self.test_trna_path)
+        sf = structure.read(self.test_trna_path)
         self.assertEqual(list(sf.chains.keys()), ["A"])
         seq = "GCGGAUUUAGCUCAGUUGGGAGAGCGCCAGACUGAAGAUCUGGAGGUCCUGUGUUCGAUCCACAGAAUUCGCACCA"
         example_chain = Chain("A")
@@ -21,7 +22,7 @@ class TestmmCIFWriter(unittest.TestCase):
         self.assertEqual(sf["A"], example_chain)
 
     def test_simple_mmcif_read_two_chain(self):
-        sf = parse_file(self.test_two_chain_path)
+        sf = structure.read(self.test_two_chain_path)
         self.assertEqual(list(sf.chains.keys()), ["A", "B"])
         chain_A = Chain("A")
         for i, s in enumerate("GCGCGUAGUAGC"):
@@ -148,35 +149,35 @@ class TestmmCIFWriter(unittest.TestCase):
         self.assertEqual(a, b)
 
     def test_full_io(self):
-        sf_read = parse_file(self.test_trna_path, include_atoms=True)
+        sf_read = structure.read(self.test_trna_path, include_atoms=True)
         with NamedTemporaryFile() as f:
             sf_read.write_mmcif_chain(f.name + ".cif", "A")
-            sf_write = parse_file(f.name + ".cif", include_atoms=True)
+            sf_write = structure.read(f.name + ".cif", include_atoms=True)
             for auth_id in sf_write.chains.keys():
                 self.assertEqual(sf_read[auth_id], sf_write[auth_id])
 
     def test_full_io_two_chains(self):
-        sf_read = parse_file(self.test_two_chain_path, include_atoms=True)
+        sf_read = structure.read(self.test_two_chain_path, include_atoms=True)
         with NamedTemporaryFile() as f:
             for chain in sf_read:
                 sf_read.write_mmcif_chain(
                     f.name + f"_{chain.author_id}.cif", chain.author_id
                 )
-                sf_write = parse_file(
+                sf_write = structure.read(
                     f.name + f"_{chain.author_id}.cif", include_atoms=True
                 )
                 for auth_id in sf_write.chains.keys():
                     self.assertEqual(sf_read[auth_id], sf_write[auth_id])
 
     def test_backwards_compatibility(self):
-        sf_old = parse_file(self.test_old_path, include_atoms=True)
-        sf_new = parse_file(self.test_trna_path, include_atoms=True)
+        sf_old = structure.read(self.test_old_path, include_atoms=True)
+        sf_new = structure.read(self.test_trna_path, include_atoms=True)
         self.assertEqual(sf_old.chains.keys(), sf_new.chains.keys())
         for k in sf_new.chains.keys():
             self.assertEqual(sf_old[k], sf_new[k])
 
     def test_atom_read(self):
-        sf = parse_file(self.test_trna_path, include_atoms=True)
+        sf = structure.read(self.test_trna_path, include_atoms=True)
         self.assertDictEqual(
             sf["A"][0].atoms,
             {

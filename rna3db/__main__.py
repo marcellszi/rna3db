@@ -3,18 +3,44 @@ from functools import partial
 from pathlib import Path
 from tqdm import tqdm
 
-from rna3db.parser import parse_as_dict
+from rna3db.parsers.structure import StructureFile
 from rna3db.filter import Filterer
 from rna3db.cluster import SequenceClusterer, StructureClusterer
 from rna3db.split import split
-from rna3db.utils import PathLike, read_json, write_json
+from rna3db.utils import read_json, write_json
 
 import argparse
 
 
+def _read_as_dict(
+    path: Path, nmr_resolution: float = None, include_atoms: bool = False
+):
+    d = {}
+    try:
+        sf = StructureFile(path, nmr_resolution, include_atoms)
+        for chain in sf:
+            chain_id = f"{sf.pdb_id}_{chain.author_id}"
+            d[chain_id] = {
+                "release_date": sf.release_date,
+                "structure_method": sf.structure_method,
+                "resolution": sf.resolution,
+                "length": len(chain),
+                "sequence": chain.sequence,
+            }
+            if include_atoms:
+                d[chain_id]["atoms"] = [res.atoms for res in chain]
+    except Exception as e:
+        print(
+            f"Unable to parse {path}. "
+            f"Please report this at https://github.com/marcellszi/rna3db/issues."
+        )
+        print(f"Exception: {e}")
+    return d
+
+
 def parse(
-    input_dir: PathLike,
-    output_path: PathLike,
+    input_dir: Path,
+    output_path: Path,
     extension: str = "cif",
     cpu: int = None,
     nmr_resolution: float = None,
@@ -24,20 +50,19 @@ def parse(
     data = {}
 
     f = partial(
-        parse_as_dict, nmr_resolution=nmr_resolution, include_atoms=include_atoms
+        _read_as_dict, nmr_resolution=nmr_resolution, include_atoms=include_atoms
     )
-    with Pool(processes=cpu) as p:
-        with tqdm(total=len(files)) as pbar:
-            for d in p.imap_unordered(f, files):
-                data.update(d)
-                pbar.update()
+    with Pool(processes=cpu) as p, tqdm(total=len(files)) as pbar:
+        for d in p.imap_unordered(f, files):
+            data |= d
+            pbar.update()
 
     write_json(data, output_path)
 
 
 def filter(
-    input_path: PathLike,
-    output_path: PathLike,
+    input_path: Path,
+    output_path: Path,
     min_length: int = 32,
     max_resolution: float = 9.0,
     single_ratio_cutoff: float = 0.8,
@@ -60,9 +85,9 @@ def filter(
 
 
 def cluster_sequence(
-    input_path: PathLike,
-    output_path: PathLike,
-    mmseqs_binary_path: PathLike = None,
+    input_path: Path,
+    output_path: Path,
+    mmseqs_binary_path: Path = None,
     min_seq_id: float = 0.99,
     min_coverage: float = 0.99,
     coverage_mode: int = 1,
@@ -85,9 +110,9 @@ def cluster_sequence(
 
 
 def cluster_structure(
-    input_path: PathLike,
-    output_path: PathLike,
-    tbl_dir: PathLike,
+    input_path: Path,
+    output_path: Path,
+    tbl_dir: Path,
     e_value_cutoff: float = 1,
 ):
     str_cluster = StructureClusterer(e_value_cutoff)

@@ -3,80 +3,26 @@ from collections import defaultdict
 from pathlib import Path
 from Bio import PDB
 
-from rna3db.modifications import ModificationHandler
-from rna3db.chem_comp import load as load_chem_comps
-from rna3db.utils import PathLike
+from rna3db.ccd.modifications import ModificationHandler
+from rna3db.ccd.chem_comp import load as load_chem_comps
 
 import dataclasses
 
 
-def parse_as_dict(
-    path: PathLike,
-    modifications_cache_path: PathLike = None,
-    nmr_resolution: float = None,
-    include_atoms: bool = False,
-):
-    """Top-level API that parses an mmCIF/PDBx file as a Python dict.
-
-    Args:
-        path (PathLike): path to mmCIF file to parse
-        nmr_resolution (float): resolution to use for NMR structures
-            Default behaviour is to treat NMR resolution as float('inf').
-
-    Returns:
-        dict: a dictionary containing release_date, structure_method,
-            resolution, length, and sequence
-    """
-    d = {}
-
-    modification_handler = ModificationHandler(modifications_cache_path)
-
-    # we want to make sure this never fails and interrupts the parse
-    try:
-        structure_file = StructureFile(
-            path, modification_handler, nmr_resolution, include_atoms
-        )
-        for chain in structure_file:
-            chain_id = f"{structure_file.pdb_id}_{chain.author_id}"
-            d[chain_id] = {
-                "release_date": structure_file.release_date,
-                "structure_method": structure_file.structure_method,
-                "resolution": structure_file.resolution,
-                "length": len(chain),
-                "sequence": chain.sequence,
-            }
-            if include_atoms:
-                d[chain_id]["atoms"] = [res.atoms for res in chain]
-    except Exception as e:
-        # we just print an error if something went wrong, don't exit
-        print(
-            f"Unable to parse {path}. "
-            f"Please report this at https://github.com/marcellszi/rna3db/issues."
-        )
-        print(f"Exception: {e}")
-
-    return d
-
-
-def parse_file(
-    path: PathLike,
-    modifications_cache_path: PathLike = None,
+def read(
+    path: Path,
     nmr_resolution: float = None,
     include_atoms: bool = False,
 ):
     """Top-level API that parses an mmCIF/PDBx file as a StructureFile.
 
     Args:
-        path (PathLike): path to mmCIF file to parse
-        modifications_cache_path (PathLike, optional): path to
-            modifications_cache, default is None
+        path (Path): path to mmCIF file to parse
 
     Returns:
         StructureFile: object containing data of parsed file
     """
-
-    modification_handler = ModificationHandler(modifications_cache_path)
-    return StructureFile(path, modification_handler, nmr_resolution, include_atoms)
+    return StructureFile(path, nmr_resolution, include_atoms)
 
 
 class Residue:
@@ -213,8 +159,7 @@ class Chain:
 class StructureFile:
     def __init__(
         self,
-        path: PathLike,
-        modification_handler: ModificationHandler,
+        path: Path,
         nmr_resolution: float = None,
         include_atoms: bool = False,
     ):
@@ -225,8 +170,7 @@ class StructureFile:
             Valid types: mmCIF (`.cif`, `.mmcif`). Legacy PDB format is not currently supported.
 
         Args:
-            path (:PathLike:): The path to the file.
-            modification_handler (:ModificationHandler:):
+            path (:Path:): The path to the file.
 
         Attributes:
             path (Path): The path of the input file.
@@ -244,9 +188,10 @@ class StructureFile:
             raise NotImplementedError(
                 "Unable to parse PDB files. Please use PDBx/mmCIF."
             )
-            file_parser = PDBParser
         else:
             raise ValueError(f"The extension `{path.suffix.lower()}` is not supported.")
+
+        modification_handler = ModificationHandler()
 
         # make the parser
         parser = file_parser(path, modification_handler, nmr_resolution, include_atoms)
@@ -257,9 +202,6 @@ class StructureFile:
         self.resolution = parser.resolution
         self.structure_method = parser.structure_method
         self.chains = parser.chains
-
-    def __repr__(self):
-        return f"Structure({self.path})"
 
     def __getitem__(self, idx):
         return self.chains[idx]
@@ -436,7 +378,7 @@ class StructureFile:
 class mmCIFParser:
     def __init__(
         self,
-        path: PathLike,
+        path: Path,
         modification_handler: ModificationHandler,
         nmr_resolution: float = None,
         include_atoms: bool = False,
@@ -661,56 +603,3 @@ class mmCIFParser:
                 )
 
         return chains
-
-
-def parse_fasta(path, force_gzip=False):
-    """Parse a FASTA file.
-
-    Supports multi-line sequences.
-
-    Args:
-        path (PathLike): Path to input FASTA file.
-        force_gzip (bool, optional): If True, will attempt to read the file as a
-        gzip file.
-
-    Returns:
-
-    """
-    if Path(path).suffix == ".gz" or force_gzip:
-        import gzip
-
-        reader = gzip.open(path, "rt")
-    else:
-        reader = open(path, "r")
-    with reader as f:
-        descriptions = []
-        sequences = []
-        i = -1
-        for line in f:
-            line = line.strip()
-            if line.startswith(">"):
-                i += 1
-                descriptions.append(line[1:])
-                sequences.append("")
-            elif line.startswith("#") or not line:
-                continue
-            else:
-                sequences[i] += line
-    return descriptions, sequences
-
-
-def write_fasta(
-    descriptions: Sequence[str], sequences: Sequence[str], output_path: PathLike
-):
-    """Write to a FASTA file.
-
-    Args:
-        descriptions (Sequence): List of descriptions for each sequence.
-        sequences (Sequence): List of sequences.
-        output_path (PathLike): Path to write FASTA file to.
-    """
-    if len(descriptions) != len(sequences):
-        raise ValueError("The length of descriptions and sequences must match.")
-    with open(output_path, "w") as f:
-        for k, v in zip(descriptions, sequences):
-            f.write(f">{k}\n{v}\n")

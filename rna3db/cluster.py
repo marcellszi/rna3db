@@ -2,9 +2,8 @@ from collections import defaultdict
 from typing import Sequence
 from pathlib import Path
 
-from rna3db.tabular import read_tbls_from_dir
-from rna3db.utils import PathLike, read_json
-from rna3db.parser import write_fasta
+from rna3db.parsers import tabular, fasta
+from rna3db.utils import read_json
 
 import subprocess
 import tempfile
@@ -87,13 +86,13 @@ class StructureClusterer:
     def __init__(self, e_value_cutoff: float = 1):
         self.e_value_cutoff = e_value_cutoff
 
-    def cluster(self, input_json_path: PathLike, input_tbls_dir: PathLike):
+    def cluster(self, input_json_path: Path, input_tbls_dir: Path):
         # make new graph
         graph = InfernalGraph()
 
         # read required data
         data = read_json(input_json_path)
-        tbl = read_tbls_from_dir(input_tbls_dir)
+        tbl = tabular.read(input_tbls_dir)
         tbl = tbl.filter_attr_by_set("query_name", set(data.keys()))
         tbl = tbl.filter_e_value(self.e_value_cutoff)
 
@@ -140,7 +139,7 @@ class StructureClusterer:
 class SequenceClusterer:
     def __init__(
         self,
-        mmseqs2_binary_path: PathLike,
+        mmseqs2_binary_path: Path,
         min_seq_id: float = 0.99,
         min_coverage: float = 0.99,
         coverage_mode: int = 1,
@@ -167,7 +166,7 @@ class SequenceClusterer:
         self.alignment_mode = alignment_mode
         self.max_seqs = max_seqs
 
-    def cluster(self, input_json_path: PathLike, output_json_path: PathLike):
+    def cluster(self, input_json_path: Path, output_json_path: Path):
         # read json
         data = read_json(input_json_path)
 
@@ -178,7 +177,7 @@ class SequenceClusterer:
             sequences.append(v["sequence"])
         # create temp FASTA and run mmseqs2
         with tempfile.NamedTemporaryFile() as fasta_f:
-            write_fasta(descriptions, sequences, fasta_f.name)
+            fasta.write(descriptions, sequences, fasta_f.name)
             self._mmseqs2(
                 fasta_path=fasta_f.name,
                 output_path=output_json_path.parent,

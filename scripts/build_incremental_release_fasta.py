@@ -1,5 +1,5 @@
 from rna3db.utils import read_json
-from rna3db.parser import write_fasta
+from rna3db.parsers import fasta
 
 from collections import defaultdict
 from pathlib import Path
@@ -23,4 +23,4 @@ if __name__ == "__main__":
         descriptions.append(k)
         sequences.append(new_parse[k]["sequence"])
 
-    write_fasta(descriptions, sequences, args.output_path)
+    fasta.write(descriptions, sequences, args.output_path)

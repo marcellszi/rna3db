@@ -1,10 +1,6 @@
 import json
-import os
 import re
-
-from typing import Union
-
-PathLike = Union[str, os.PathLike]
+from pathlib import Path
 
 
 def to_case_insensitive(s: str) -> str:
@@ -21,11 +17,11 @@ def to_case_sensitive(s: str) -> str:
     return "".join(out)
 
 
-def read_json(input_path: PathLike) -> dict:
+def read_json(input_path: Path) -> dict:
     """Read a JSON file to a Python dictionary.
 
     Args:
-        input_path (PathLike): path from which the JSON is read
+        input_path (Path): path from which the JSON is read
 
     Returns:
         Python dict of read JSON
@@ -34,12 +30,12 @@ def read_json(input_path: PathLike) -> dict:
         return json.load(f)
 
 
-def write_json(data: dict, output_path: PathLike):
+def write_json(data: dict, output_path: Path):
     """Write a Python dictionary to a JSON file.
 
     Args:
         data (dict): dictionary to write
-        output_path (PathLike): path to write the JSON to
+        output_path (Path): path to write the JSON to
     """
     with open(output_path, "w") as f:
         json.dump(data, f, indent=4)

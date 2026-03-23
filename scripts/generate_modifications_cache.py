@@ -12,7 +12,7 @@ import sys
 
 sys.path.append(".")
 
-from rna3db.modifications import generate_from_ccd, get_cache_path
+from rna3db.ccd.modifications import generate_from_ccd, get_cache_path
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

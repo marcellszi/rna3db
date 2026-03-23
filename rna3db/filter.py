@@ -1,7 +1,8 @@
 import logging
 import json
 
-from rna3db.utils import PathLike, write_json
+from pathlib import Path
+from rna3db.utils import write_json
 
 
 class Filterer:
@@ -44,7 +45,7 @@ class Filterer:
         ratio = d["sequence"].count("N") / len(d["sequence"])
         return ratio > self.max_unknown_ratio
 
-    def apply_filters(self, data: dict, json_filter_log_path: PathLike = None):
+    def apply_filters(self, data: dict, json_filter_log_path: Path = None):
         logging.info(f"Applying filters {[f.__name__ for f in self.filters]}")
         filtered_data = {}
         applied_filters = {}

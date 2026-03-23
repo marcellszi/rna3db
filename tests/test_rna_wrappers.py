@@ -1,4 +1,4 @@
-from rna3db.parser import Chain, Residue
+from rna3db.parsers.structure import Chain, Residue
 import unittest
 
 

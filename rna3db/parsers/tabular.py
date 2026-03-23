@@ -3,22 +3,23 @@ from collections import namedtuple
 from typing import Sequence
 from pathlib import Path
 
-from rna3db.utils import PathLike
 
-
-def read_tbls_from_dir(path: PathLike):
-    """Load all `.tbl` files from a directory.
+def read(path: Path) -> "TabularOutput":
+    """Read a `.tbl` file or a directory of `.tbl` files.
 
     Args:
-        path (PathLike): directory to load from
+        path (Path): Path to a `.tbl` file or a directory containing `.tbl` files.
 
     Returns:
         TabularOutput: Object containing all hits, sorted by E-value.
     """
-    hits = []
-    for p in Path(path).glob("*.tbl"):
-        hits.extend(TabularOutput(p).hits)
-    return TabularOutput(hits=sorted(hits, key=lambda x: x.e_value))
+    path = Path(path)
+    if path.is_dir():
+        hits = []
+        for p in path.glob("*.tbl"):
+            hits.extend(TabularOutput(p).hits)
+        return TabularOutput(hits=sorted(hits, key=lambda x: x.e_value))
+    return TabularOutput(path)
 
 
 class TabularOutput:
@@ -45,7 +46,7 @@ class TabularOutput:
 
     Hit = namedtuple("Hit", list(TBL_ROW_TYPES.keys()))
 
-    def __init__(self, path: PathLike = None, hits: Sequence[Hit] = None):
+    def __init__(self, path: Path = None, hits: Sequence[Hit] = None):
         if (path is None) == (hits is None):
             raise ValueError("Invalid values for path and/or hits.")
         if path is not None:

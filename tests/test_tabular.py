@@ -4,7 +4,7 @@ import tempfile
 
 from collections import defaultdict
 
-from rna3db.tabular import TabularOutput
+from rna3db.parsers.tabular import TabularOutput
 
 TBL_STR = (
     "#target name         accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target\n"

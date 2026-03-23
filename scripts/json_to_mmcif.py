@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from rna3db.utils import read_json, to_case_insensitive
-from rna3db.parser import parse_file
+from rna3db.parsers import structure
 from pathlib import Path
 from tqdm import tqdm
 
@@ -32,7 +32,7 @@ def main(args):
                         print(f"WARNING: could not find {pdb_mmcif_path}")
                         continue
                     if not output_path.is_file() or not args.skip_existing:
-                        sf = parse_file(pdb_mmcif_path, include_atoms=True)
+                        sf = structure.read(pdb_mmcif_path, include_atoms=True)
                         sf.write_mmcif_chain(output_path, author_id)
                     pbar.update(1)
 
