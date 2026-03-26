@@ -14,12 +14,10 @@ import runpy
 import sys
 import tempfile
 import unittest
-
 from contextlib import redirect_stderr
 from pathlib import Path
 
 from rna3db.utils import read_json, write_json
-
 
 SLOW_TESTS = os.environ.get("RNA3DB_SLOW_TESTS")
 slow = unittest.skipUnless(SLOW_TESTS, "Set RNA3DB_SLOW_TESTS=1 to run slow tests")

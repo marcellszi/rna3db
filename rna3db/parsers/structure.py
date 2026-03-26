@@ -1,12 +1,12 @@
-from typing import Sequence, Mapping, Tuple, Iterator
+import dataclasses
 from collections import defaultdict
 from pathlib import Path
+from typing import Iterator, Mapping, Sequence, Tuple
+
 from Bio import PDB
 
-from rna3db.ccd.modifications import ModificationHandler
 from rna3db.ccd.chem_comp import load as load_chem_comps
-
-import dataclasses
+from rna3db.ccd.modifications import ModificationHandler
 
 
 class Residue:

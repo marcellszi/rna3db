@@ -1,8 +1,8 @@
 from __future__ import annotations
-from collections import namedtuple
-from typing import Any, Sequence
-from pathlib import Path
 
+from collections import namedtuple
+from pathlib import Path
+from typing import Any, Sequence
 
 _TBL_ROW_TYPES = {
     "target_name": str,

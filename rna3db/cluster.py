@@ -1,14 +1,13 @@
+import logging
+import os
+import subprocess
+import tempfile
 from collections import defaultdict
-from typing import Sequence
 from pathlib import Path
+from typing import Sequence
 
 from rna3db.parsers import FASTA, Table
 from rna3db.utils import read_json
-
-import subprocess
-import tempfile
-import logging
-import os
 
 _MMSEQS2_CLUSTER_PREFIX = "mmseqs2"
 

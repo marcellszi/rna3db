@@ -13,8 +13,8 @@ authors:
     family-names: "Kadyan"
   - given-names: "Nazim"
     family-names: "Bouatta"
-  - given-names: "Elena
-    family-names: Rivas"
+  - given-names: "Elena"
+    family-names: "Rivas"
 url: "https://github.com/marcellszi/rna3db"
 doi: "10.1016/j.jmb.2024.168552"
 date-released: 2024-04-26
@@ -32,7 +32,7 @@ preferred-citation:
   - given-names: "Nazim"
     family-names: "Bouatta"
   - given-names: "Elena"
-    family-names: Rivas"
+    family-names: "Rivas"
   doi: "10.1016/j.jmb.2024.168552"
   journal: "Journal of Molecular Biology"
   title: "RNA3DB: A structurally-dissimilar dataset split for training and benchmarking deep learning models for RNA structure prediction"

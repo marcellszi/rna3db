@@ -1,12 +1,11 @@
 import shutil
 import tempfile
 import unittest
-
-from tempfile import NamedTemporaryFile
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from rna3db.parsers import Structure
-from rna3db.parsers.structure import Residue, Chain
+from rna3db.parsers.structure import Chain, Residue
 
 
 class TestmmCIFWriter(unittest.TestCase):

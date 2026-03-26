@@ -1,12 +1,13 @@
+import argparse
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
-from tqdm import tqdm
-import argparse
 
-from rna3db.parsers import Structure
-from rna3db.filter import apply_filters
+from tqdm import tqdm
+
 from rna3db.cluster import cluster_sequences, cluster_structures
+from rna3db.filter import apply_filters
+from rna3db.parsers import Structure
 from rna3db.split import split
 from rna3db.utils import read_json, write_json
 

@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "rna3db"
+version = "2.0.0"
+description = "A dataset for training and benchmarking deep learning models for RNA structure prediction"
+authors = [
+    { name = "Marcell Szikszai" },
+    { name = "Marcin Magnus" },
+    { name = "Siddhant Sanghi" },
+    { name = "Sachin Kadyan" },
+    { name = "Nazim Bouatta" },
+    { name = "Elena Rivas" },
+]
+requires-python = ">=3.8"
+dependencies = ["biopython", "tqdm", "pulp"]
+
+[project.optional-dependencies]
+dev = ["black==26.3.0", "isort==5.13.2", "pre-commit"]
+
+[tool.isort]
+profile = "black"
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "scripts", "data"]

@@ -8,7 +8,7 @@ import json
 import logging
 from pathlib import Path
 
-from rna3db.ccd import CACHE_DIR, download_ccd, parse_components_gz, parse_cif_fields
+from rna3db.ccd import CACHE_DIR, download_ccd, parse_cif_fields, parse_components_gz
 
 logger = logging.getLogger(__name__)
 

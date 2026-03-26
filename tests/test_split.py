@@ -1,10 +1,8 @@
+import tempfile
 import unittest
 
 from rna3db.split import find_optimal_components, split
 from rna3db.utils import write_json
-
-import unittest
-import tempfile
 
 
 def total_deviation(sol, components, bins):

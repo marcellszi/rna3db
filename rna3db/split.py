@@ -1,9 +1,9 @@
 import random
-import pulp
-
+from pathlib import Path
 from typing import Sequence
 
-from pathlib import Path
+import pulp
+
 from rna3db.utils import read_json, write_json
 
 

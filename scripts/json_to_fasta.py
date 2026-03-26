@@ -1,7 +1,7 @@
-from rna3db.utils import read_json
+import argparse
 from pathlib import Path
 
-import argparse
+from rna3db.utils import read_json
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

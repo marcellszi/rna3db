@@ -1,5 +1,6 @@
-from rna3db.parsers.structure import Chain, Residue
 import unittest
+
+from rna3db.parsers.structure import Chain, Residue
 
 
 class TestRNAWrappers(unittest.TestCase):

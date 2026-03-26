@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from rna3db.utils import read_json, to_case_insensitive
-from rna3db.parsers import structure
+import argparse
 from pathlib import Path
+
 from tqdm import tqdm
 
-import argparse
+from rna3db.parsers import structure
+from rna3db.utils import read_json, to_case_insensitive
 
 
 def main(args):

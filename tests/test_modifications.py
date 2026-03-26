@@ -1,6 +1,7 @@
-from Bio.Data import PDBData
-from pathlib import Path
 import unittest
+from pathlib import Path
+
+from Bio.Data import PDBData
 
 from rna3db.ccd.modifications import ModificationHandler
 

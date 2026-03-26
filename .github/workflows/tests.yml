@@ -1,0 +1,17 @@
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -e .
+      - name: Run tests
+        # Slow tests require MMseqs2 to be installed; skip them here.
+        run: python -m unittest discover

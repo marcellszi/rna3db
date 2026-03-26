@@ -1,6 +1,6 @@
 import itertools
-import unittest
 import string
+import unittest
 
 from rna3db.utils import to_case_insensitive, to_case_sensitive
 

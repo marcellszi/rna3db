@@ -1,5 +1,6 @@
-from rna3db.cluster import InfernalGraph
 import unittest
+
+from rna3db.cluster import InfernalGraph
 
 
 class TestInfernalGraph(unittest.TestCase):

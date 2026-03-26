@@ -1,7 +1,7 @@
-from rna3db.parsers import tabular, fasta
+import argparse
 from pathlib import Path
 
-import argparse
+from rna3db.parsers import fasta, tabular
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
