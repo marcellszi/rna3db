@@ -13,13 +13,13 @@ if __name__ == "__main__":
     parser.add_argument("output_path", type=Path)
     args = parser.parse_args()
 
-    records = fasta.read(args.input_path)
+    records = fasta.FASTA.read(args.input_path)
     data = defaultdict(dict)
-    for r in records:
-        data[r.header]["release_date"] = "1970-01-01"
-        data[r.header]["structure_method"] = ""
-        data[r.header]["resolution"] = 0.0
-        data[r.header]["length"] = len(r.sequence)
-        data[r.header]["sequence"] = r.sequence
+    for header, sequence in records:
+        data[header]["release_date"] = "1970-01-01"
+        data[header]["structure_method"] = ""
+        data[header]["resolution"] = 0.0
+        data[header]["length"] = len(sequence)
+        data[header]["sequence"] = sequence
 
     write_json(data, args.output_path)

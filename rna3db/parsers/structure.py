@@ -73,13 +73,9 @@ class Chain:
         self.residues = []
 
     def __iter__(self):
-        if len(self) == 0:
-            return None
         return iter(self.residues)
 
     def __getitem__(self, idx):
-        if len(self) == 0:
-            return None
         return self.residues[idx]
 
     def __len__(self) -> int:
@@ -367,7 +363,6 @@ class Structure:
                     "'RNA linking'",
                     "y",
                     f'"{comp["name"]}"',
-                    "?",
                     f"'{comp['formula']}'" if comp["formula"] != "?" else "?",
                     comp["weight"],
                 )

@@ -16,9 +16,8 @@ if __name__ == "__main__":
     old_parse = read_json(args.old_path)
     new_parse = read_json(args.new_path)
 
-    records = [
-        fasta.Record(header=k, sequence=new_parse[k]["sequence"])
-        for k in set(new_parse.keys()) - set(old_parse.keys())
-    ]
+    keys_to_write = set(new_parse.keys()) - set(old_parse.keys())
+    headers = list(keys_to_write)
+    sequences = [new_parse[k]["sequence"] for k in headers]
 
-    fasta.write(records, args.output_path)
+    fasta.FASTA(headers, sequences).write(args.output_path)

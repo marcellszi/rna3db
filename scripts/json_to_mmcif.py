@@ -33,8 +33,8 @@ def main(args):
                         print(f"WARNING: could not find {pdb_mmcif_path}")
                         continue
                     if not output_path.is_file() or not args.skip_existing:
-                        sf = structure.read(pdb_mmcif_path, include_atoms=True)
-                        sf.write_mmcif_chain(output_path, author_id)
+                        sf = structure.Structure.read(pdb_mmcif_path, include_atoms=True)
+                        sf.write(output_path, author_id)
                     pbar.update(1)
 
 
