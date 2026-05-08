@@ -15,7 +15,7 @@ authors = [
     { name = "Elena Rivas" },
 ]
 requires-python = ">=3.8"
-dependencies = ["biopython", "tqdm", "pulp"]
+dependencies = ["fast-mmcif2dict @ git+https://github.com/marcellszi/fast_mmcif2dict.git", "tqdm", "pulp"]
 
 [project.optional-dependencies]
 dev = ["black==26.3.0", "isort==5.13.2", "pre-commit"]

@@ -3,7 +3,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Iterator, Mapping, Sequence, Tuple
 
-from Bio import PDB
+from fast_mmcif2dict import FastMMCIF2Dict
 
 from rna3db.ccd.chem_comp import load as load_chem_comps
 from rna3db.ccd.modifications import ModificationHandler
@@ -427,7 +427,7 @@ class Structure:
 
 
 class mmCIFParser:
-    """Low-level parser for mmCIF/PDBx files. Wraps BioPython's MMCIF2Dict."""
+    """Low-level parser for mmCIF/PDBx files. Wraps fast_mmcif2dict."""
 
     def __init__(
         self,
@@ -450,7 +450,7 @@ class mmCIFParser:
 
         self.letters_3to1 = lambda x: modification_handler.rna_letters_3to1(x)
 
-        self.parsed_info = PDB.MMCIF2Dict.MMCIF2Dict(self.path)
+        self.parsed_info = FastMMCIF2Dict(self.path)
 
     @property
     def pdb_id(self) -> str:
@@ -507,7 +507,7 @@ class mmCIFParser:
         z: str
 
     @staticmethod
-    def _get_atom_sites(parsed_info: PDB.MMCIF2Dict) -> list:
+    def _get_atom_sites(parsed_info: FastMMCIF2Dict) -> list:
         # fmt: off
         return [
             mmCIFParser._AtomSite(*site)
@@ -553,6 +553,8 @@ class mmCIFParser:
             self.parsed_info["_atom_site.auth_asym_id"],
             self.parsed_info["_atom_site.label_asym_id"],
         ):
+            if mmcif_chain_id not in mmcif_chain_to_entity_id:
+                continue  # water, non-polymer entities not in _struct_asym
             k = mmcif_chain_to_entity_id[mmcif_chain_id]
             id_map[k].add(author_chain_id)
             self.auth_asym_to_label_asym[author_chain_id].add(mmcif_chain_id)
